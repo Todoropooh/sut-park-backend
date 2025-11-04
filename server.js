@@ -7,21 +7,20 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer'); // (สำหรับอัปโหลดไฟล์)
 const path = require('path'); // (สำหรับจัดการเส้นทางไฟล์)
 
-// 2. (สำคัญ!) ลิงก์เชื่อมต่อ MongoDB Atlas ของคุณ
-const MONGO_URI = "mongodb+srv://ksuthikiat_db_user:5ux2ke37SFIjaXW5@sutpark.h7aiwyt.mongodb.net/sut_park_db?appName=sutpark";
+// 2. ⭐️ [แก้ไข] ⭐️ ดึง "ความลับ" จาก Environment Variables
+// (นี่คือโค้ดสำหรับเตรียม Deploy ขึ้น Render.com)
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux2ke37SFIjaXW5@sutpark.h7aiwyt.mongodb.net/sut_park_db?appName=sutpark";
+const JWT_SECRET = process.env.JWT_SECRET || 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!'; 
 
-// ⚠️ [คำเตือน] (สำคัญ!) นี่คือ Secret Key สำหรับสร้าง Token
-const JWT_SECRET = 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!'; 
-
-// 3. สร้างแอปเซิร์ฟเวอร์
+// 3. ⭐️ [แก้ไข] ⭐️ ตั้งค่าพอร์ต (Port)
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000; // (ใช้พอร์ตที่ Render กำหนดให้ หรือ 3000 ถ้าทดสอบ)
 
 // 4. ตั้งค่าเซิร์ฟเวอร์
 app.use(cors());
 app.use(express.json()); 
 
-// ⭐️ [เพิ่มใหม่] ⭐️ ตั้งค่า Multer (ตัวอัปโหลดไฟล์)
+// ตั้งค่า Multer (ตัวอัปโหลดไฟล์)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'uploads/'); // (ต้องสร้างโฟลเดอร์ 'uploads' ไว้)
@@ -33,13 +32,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// ⭐️ [เพิ่มใหม่] ⭐️ เปิดให้เข้าถึงโฟลเดอร์ uploads ได้
-// (เพื่อให้รูปภาพแสดงในเว็บได้)
+// เปิดให้เข้าถึงโฟลเดอร์ uploads ได้
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ----------------------------------------------------
 
 
 // --- 5. สร้าง "พิมพ์เขียว" (Schema) ทั้งหมด ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 const contactSchema = new mongoose.Schema({ name: { type: String, required: true }, email: { type: String, required: true }, message: { type: String }, submittedAt: { type: Date, default: Date.now } });
 const Contact = mongoose.model('Contact', contactSchema);
 
@@ -50,8 +49,8 @@ const bookingSchema = new mongoose.Schema({
     attendees: { type: Number, required: true },
     contactName: { type: String, required: true },
     contactEmail: { type: String, required: true },
-    contactPhone: { type: String }, // (อัปเดตแล้ว)
-    breakAgreement: { type: Boolean, default: false }, // (อัปเดตแล้ว)
+    contactPhone: { type: String }, 
+    breakAgreement: { type: Boolean, default: false }, 
     submittedAt: { type: Date, default: Date.now }
 });
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -71,7 +70,7 @@ const newsSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: { type: String }, 
     content: { type: String, required: true },
-    imageUrl: { type: String }, // (เก็บเป็น Path /uploads/filename.jpg)
+    imageUrl: { type: String }, 
     publishedAt: { type: Date, default: Date.now }
 });
 const News = mongoose.model('News', newsSchema);
@@ -86,14 +85,13 @@ const Activity = mongoose.model('Activity', activitySchema);
 // ------------------------------------
 
 // --- 6. Middleware สำหรับตรวจสอบ JWT Token ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // รูปแบบ "Bearer TOKEN"
-    
+    const token = authHeader && authHeader.split(' ')[1]; 
     if (token == null) {
         return res.status(401).json({ message: 'ไม่พบ Token (ต้องล็อกอินก่อน)' });
     }
-
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({ message: 'Token ไม่ถูกต้องหรือหมดอายุ' });
@@ -102,7 +100,6 @@ const authenticateToken = (req, res, next) => {
         next(); 
     });
 };
-
 const isAdmin = (req, res, next) => {
     if (!req.user || !req.user.isAdmin) {
         return res.status(403).json({ message: 'คุณไม่มีสิทธิ์ผู้ดูแลระบบ' });
@@ -112,6 +109,7 @@ const isAdmin = (req, res, next) => {
 // ----------------------------------------------------
 
 // --- 7. API Endpoints (POST - สาธารณะ) ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 app.post('/submit-form', async (req, res) => {
     try {
         const { name, email, message } = req.body;
@@ -133,7 +131,6 @@ app.post('/submit-booking', async (req, res) => {
         if (!room || !bookingDate || !bookingTime || !contactName || !contactEmail) {
             return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' });
         }
-        
         const newBooking = new Booking({
             ...req.body,
             contactPhone: contactPhone || null,
@@ -149,6 +146,7 @@ app.post('/submit-booking', async (req, res) => {
 // ----------------------------------------------------
 
 // --- 8. API Endpoints (POST - ระบบ Admin) ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 
 // Endpoint สำหรับ Admin Login
 app.post('/api/login', async (req, res) => {
@@ -157,25 +155,20 @@ app.post('/api/login', async (req, res) => {
         if (!username || !password) {
             return res.status(400).json({ message: 'กรุณากรอก Username และ Password' });
         }
-
         const user = await User.findOne({ username: username });
         if (!user) {
             return res.status(401).json({ message: 'Username หรือ Password ไม่ถูกต้อง' });
         }
-
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Username หรือ Password ไม่ถูกต้อง' });
         }
-
         const payload = {
             userId: user._id,
             username: user.username,
             isAdmin: user.isAdmin
         };
-        
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); 
-
         res.json({
             status: 'success',
             message: 'ล็อกอินสำเร็จ',
@@ -185,7 +178,6 @@ app.post('/api/login', async (req, res) => {
                 isAdmin: user.isAdmin
             }
         });
-
     } catch (error) {
         console.error('Error /api/login:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
@@ -203,7 +195,6 @@ app.post('/api/users/create', authenticateToken, isAdmin, async (req, res) => {
         if (existingUser) {
             return res.status(400).json({ message: 'Username นี้ถูกใช้งานแล้ว' });
         }
-
         const newUser = new User({
             username,
             password, 
@@ -211,7 +202,6 @@ app.post('/api/users/create', authenticateToken, isAdmin, async (req, res) => {
         });
         await newUser.save();
         res.status(201).json({ status: 'success', message: `สร้างผู้ใช้ ${username} สำเร็จ` });
-
     } catch (error) {
         console.error('Error /api/users/create:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
@@ -222,11 +212,9 @@ app.post('/api/users/create', authenticateToken, isAdmin, async (req, res) => {
 app.post('/api/add-news', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
     const { title, category, content } = req.body;
     const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
-
     if (!title || !content) { 
         return res.status(400).json({ message: 'กรุณากรอกหัวข้อ และเนื้อหาข่าว' }); 
     }
-    
     try {
         const newNewsItem = new News({ 
             title, 
@@ -243,18 +231,17 @@ app.post('/api/add-news', authenticateToken, isAdmin, upload.single('imageUrl'),
     }
 });
 
-// ⭐️ [แก้ไข] ⭐️ เปลี่ยนให้รับไฟล์ภาพ (multipart/form-data)
+// เพิ่มกิจกรรม (Admin only)
 app.post('/api/activities', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
     try {
         const { title, date, content } = req.body;
         const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
-
         if (!title || !date || !content) {
             return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน (หัวข้อ, วันที่, เนื้อหา)' });
         }
         const newActivity = new Activity({
             title,
-            date: new Date(date), // (แปลงวันที่)
+            date: new Date(date), 
             content,
             imageUrl: imageUrlPath
         });
@@ -266,28 +253,89 @@ app.post('/api/activities', authenticateToken, isAdmin, upload.single('imageUrl'
     }
 });
 
-// Endpoint สำหรับ Admin สร้างการจอง
-// (วางใน server.js ส่วนที่ 9. API Endpoints (GET - สาธารณะ))
+// ⭐️ [ย้ายมา] ⭐️ Endpoint สำหรับ Admin สร้างการจอง
+app.post('/api/bookings/create', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { 
+            room, bookingDate, bookingTime, attendees, 
+            contactName, contactEmail, contactPhone, breakAgreement 
+        } = req.body;
+        
+        if (!room || !bookingDate || !bookingTime || !attendees || !contactName || !contactEmail || !contactPhone) {
+            return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' });
+        }
+        
+        const newBooking = new Booking({
+            room,
+            bookingDate: new Date(bookingDate),
+            bookingTime,
+            attendees,
+            contactName,
+            contactEmail,
+            contactPhone: contactPhone,
+            breakAgreement: breakAgreement || false
+        });
+        
+        await newBooking.save();
+        
+        res.status(201).json({ 
+            status: 'success', 
+            message: `สร้างการจอง "${room}" สำหรับ ${contactName} สำเร็จ`,
+            data: newBooking
+        });
+        
+    } catch (error) {
+        console.error('Error creating new booking (Admin):', error);
+        if (error.name === 'CastError' && error.kind === 'Date') {
+             return res.status(400).json({ message: 'รูปแบบวันที่จองไม่ถูกต้อง' });
+        }
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์ในการสร้างการจองใหม่' });
+    }
+});
+// ----------------------------------------------------
 
-// ⭐️ [เพิ่มใหม่] ⭐️ Endpoint สำหรับปฏิทินหน้าบ้าน
+
+// --- 9. API Endpoints (GET - สาธารณะ) ---
+// ⭐️ [ย้ายมา] ⭐️ (จัดเรียงใหม่ทั้งหมด)
+app.get('/public/news', async (req, res) => {
+    try {
+        const news = await News.find({}).sort({ publishedAt: -1 });
+        res.json(news);
+    } catch (error) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    }
+});
+
+app.get('/public/activities', async (req, res) => {
+    try {
+        const activities = await Activity.find({}).sort({ date: -1 });
+        res.json(activities);
+    } catch (error) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    }
+});
+
 app.get('/public/bookings', async (req, res) => {
     try {
-        // 1. ดึงข้อมูลเฉพาะที่จำเป็น (ไม่เอาชื่อ, อีเมล, เบอร์โทร)
         const bookings = await Booking.find({})
                                       .select('room bookingDate bookingTime'); 
                                       
-        // 2. แปลงข้อมูลให้เป็นรูปแบบที่ FullCalendar อ่านได้
         const events = bookings.map(b => {
-            
-            // 3. หาวันที่ (เช่น "2025-11-30")
             const dateStr = b.bookingDate.toISOString().split('T')[0];
             
-            // 4. หาเวลา (เช่น "08:00" และ "12:00")
+            // (ป้องกัน Error ถ้า bookingTime ไม่มี ' - ')
+            if (!b.bookingTime || !b.bookingTime.includes(' - ')) {
+                return {
+                    title: `จองแล้ว (${b.room})`,
+                    start: dateStr, // (แสดงทั้งวันถ้าเวลามีปัญหา)
+                    color: '#dc3545'
+                };
+            }
+            
             const timeParts = b.bookingTime.split(' - ');
             const startTime = timeParts[0];
             const endTime = timeParts[1];
 
-            // 5. สร้าง ISO DateTime (เช่น "2025-11-30T08:00:00")
             const startISO = `${dateStr}T${startTime}:00`;
             const endISO = `${dateStr}T${endTime}:00`;
 
@@ -295,12 +343,12 @@ app.get('/public/bookings', async (req, res) => {
                 title: `จองแล้ว (${b.room})`,
                 start: startISO,
                 end: endISO,
-                color: '#dc3545', // (สีแดงสำหรับไฮไลท์)
+                color: '#dc3545', 
                 display: 'block'
             };
         });
 
-        res.json(events); // (ส่งข้อมูลที่แปลงแล้วกลับไป)
+        res.json(events); 
 
     } catch (error) {
         console.error('Error /public/bookings:', error);
@@ -309,10 +357,9 @@ app.get('/public/bookings', async (req, res) => {
 });
 // ----------------------------------------------------
 
-// --- 10. API Endpoints (GET - ป้องกัน Admin) ---
 
-// (ใน server.js)
-// [สำคัญ] API สำหรับ Dashboard Stats (รองรับ Filter)
+// --- 10. API Endpoints (GET - ป้องกัน Admin) ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => {
     console.log("กำลังดึงข้อมูล /api/dashboard-stats (ยืนยันสิทธิ์แล้ว)"); 
     
@@ -341,11 +388,10 @@ app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => 
     }
 
     try {
-        // ⭐️ [นี่คือส่วนที่แก้ไข] ⭐️
         const newsCount = await News.countDocuments();
         const bookingCount = await Booking.countDocuments();
         const userCount = await User.countDocuments();
-        const activityCount = await Activity.countDocuments(); // (เพิ่มการนับกิจกรรม)
+        const activityCount = await Activity.countDocuments(); 
 
         const bookingAgg = await Booking.aggregate([
             { $group: { _id: groupingId, count: { $sum: 1 } } },
@@ -368,12 +414,11 @@ app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => 
             data: newsAgg.map(item => item.count)
         };
 
-        // ⭐️ [นี่คือส่วนที่แก้ไข] ⭐️
         res.json({
             newsTotal: newsCount,
             bookingsTotal: bookingCount,
             usersTotal: userCount,
-            activitiesTotal: activityCount, // (เพิ่มการส่งค่านี้กลับไป)
+            activitiesTotal: activityCount, 
             bookingChartData: bookingChartData,
             newsChartData: newsChartData
         });
@@ -384,7 +429,6 @@ app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => 
     }
 });
 
-// ดึงข้อมูลการจอง (Admin only)
 app.get('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
     try {
         const bookings = await Booking.find({}).sort({ submittedAt: -1 });
@@ -394,7 +438,6 @@ app.get('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ดึงข้อมูลติดต่อ (Admin only)
 app.get('/api/contacts', authenticateToken, isAdmin, async (req, res) => {
     try {
         const contacts = await Contact.find({}).sort({ submittedAt: -1 });
@@ -404,7 +447,6 @@ app.get('/api/contacts', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ดึงข้อมูลผู้ใช้ (Admin only)
 app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     try {
         const users = await User.find({}).select('-password'); 
@@ -414,7 +456,6 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ดึงข้อมูลข่าว (Admin only)
 app.get('/api/news', authenticateToken, isAdmin, async (req, res) => {
     try {
         const news = await News.find({}).sort({ publishedAt: -1 });
@@ -424,7 +465,6 @@ app.get('/api/news', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ดึงข่าวชิ้นเดียว (Admin only)
 app.get('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
@@ -441,7 +481,6 @@ app.get('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ดึงข้อมูลกิจกรรม (Admin only)
 app.get('/api/activities', authenticateToken, isAdmin, async (req, res) => {
     try {
         const activities = await Activity.find({}).sort({ date: -1 });
@@ -451,7 +490,6 @@ app.get('/api/activities', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ⭐️ [เพิ่มใหม่] ⭐️ ดึงกิจกรรมชิ้นเดียว (Admin only)
 app.get('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
@@ -470,31 +508,23 @@ app.get('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
 // ----------------------------------------------------
 
 // --- 11. API Endpoints (PUT - ป้องกัน Admin) ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
     try {
         const { id } = req.params;
         const { title, category, content } = req.body;
-
         if (!title || !content) {
             return res.status(400).json({ message: 'กรุณากรอกหัวข้อและเนื้อหา' });
         }
-
         const updateData = {
             title,
             category: category || 'ทั่วไป',
             content
         };
-
         if (req.file) {
             updateData.imageUrl = `/uploads/${req.file.filename}`;
         }
-        
-        const updatedNews = await News.findByIdAndUpdate(
-            id, 
-            updateData, 
-            { new: true } 
-        );
-
+        const updatedNews = await News.findByIdAndUpdate( id, updateData, { new: true } );
         if (!updatedNews) {
             return res.status(404).json({ message: 'ไม่พบข่าวนี้' });
         }
@@ -505,32 +535,22 @@ app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), 
     }
 });
 
-// ⭐️ [เพิ่มใหม่] ⭐️ Endpoint สำหรับ "แก้ไข" กิจกรรม
 app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
     try {
         const { id } = req.params;
         const { title, date, content } = req.body;
-
         if (!title || !date || !content) {
             return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' });
         }
-
         const updateData = {
             title,
-            date: new Date(date), // (แปลงวันที่)
+            date: new Date(date), 
             content
         };
-
         if (req.file) {
             updateData.imageUrl = `/uploads/${req.file.filename}`;
         }
-        
-        const updatedActivity = await Activity.findByIdAndUpdate(
-            id, 
-            updateData, 
-            { new: true } 
-        );
-
+        const updatedActivity = await Activity.findByIdAndUpdate( id, updateData, { new: true } );
         if (!updatedActivity) {
             return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' });
         }
@@ -543,6 +563,7 @@ app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageU
 // ----------------------------------------------------
 
 // --- 12. API Endpoints (DELETE - ป้องกัน Admin) ---
+// (ส่วนนี้ถูกต้อง ไม่ได้แก้ไข)
 app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
