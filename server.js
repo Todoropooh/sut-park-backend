@@ -4,8 +4,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const multer = require('multer'); // (สำหรับอัปโหลดไฟล์)
-const path = require('path'); // (สำหรับจัดการเส้นทางไฟล์)
+const multer = require('multer');
+const path = require('path');
 
 // 2. ⭐️ [แก้ไข] ⭐️ ดึง "ความลับ" จาก Environment Variables
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux2ke37SFIjaXW5@sutpark.h7aiwyt.mongodb.net/sut_park_db?appName=sutpark";
@@ -13,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME
 
 // 3. ⭐️ [แก้ไข] ⭐️ ตั้งค่าพอร์ต (Port)
 const app = express();
-const port = process.env.PORT || 3000; // (ใช้พอร์ตที่ Render กำหนดให้ หรือ 3000 ถ้าทดสอบ)
+const port = process.env.PORT || 3000; 
 
 // 4. ตั้งค่าเซิร์ฟเวอร์
 app.use(cors());
@@ -21,13 +21,8 @@ app.use(express.json());
 
 // ตั้งค่า Multer (ตัวอัปโหลดไฟล์)
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/'); // (ต้องสร้างโฟลเดอร์ 'uploads' ไว้)
-    },
-    filename: function (req, file, cb) {
-        // (ตั้งชื่อไฟล์ใหม่ไม่ให้ซ้ำกัน)
-        cb(null, Date.now() + path.extname(file.originalname)); 
-    }
+    destination: function (req, file, cb) { cb(null, 'uploads/'); },
+    filename: function (req, file, cb) { cb(null, Date.now() + path.extname(file.originalname)); }
 });
 const upload = multer({ storage: storage });
 
@@ -37,11 +32,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 // --- 5. สร้าง "พิมพ์เขียว" (Schema) ทั้งหมด ---
-// (Contact Schema)
+// (Contact Schema - ถูกต้อง)
 const contactSchema = new mongoose.Schema({ name: { type: String, required: true }, email: { type: String, required: true }, message: { type: String }, submittedAt: { type: Date, default: Date.now } });
 const Contact = mongoose.model('Contact', contactSchema);
 
-// [แก้ไข] อัปเดต bookingSchema ทั้งหมด
+// (Booking Schema - Schema ใหม่)
 const bookingSchema = new mongoose.Schema({
     eventName: { type: String, required: true },
     bookingDate: { type: Date, required: true },
@@ -53,12 +48,12 @@ const bookingSchema = new mongoose.Schema({
     equipment: { type: String },
     break: { type: Boolean, default: false },
     details: { type: String },
-    room: { type: String, default: 'ห้องประชุม' }, // [เพิ่ม] เก็บค่าห้องประชุม
+    room: { type: String, default: 'ห้องประชุม' },
     submittedAt: { type: Date, default: Date.now }
 });
 const Booking = mongoose.model('Booking', bookingSchema);
 
-// ( User, News, Activity Schemas ... )
+// (User Schema - ถูกต้อง)
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -70,6 +65,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.model('User', userSchema);
 
+// (News Schema - ถูกต้อง)
 const newsSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: { type: String }, 
@@ -79,6 +75,7 @@ const newsSchema = new mongoose.Schema({
 });
 const News = mongoose.model('News', newsSchema);
 
+// (Activity Schema - ถูกต้อง)
 const activitySchema = new mongoose.Schema({
     title: { type: String, required: true },
     date: { type: Date, required: true },
@@ -129,13 +126,8 @@ app.post('/submit-form', async (req, res) => {
 
 /*
 // ❗️ [ปิดการใช้งาน] ❗️ Endpoint นี้ใช้ไม่ได้แล้ว เพราะ BookingSchema เปลี่ยนไป
-app.post('/submit-booking', async (req, res) => {
-    try {
-        // ... โค้ดเก่านี้จะพัง ...
-    } catch (error) {
-        console.error('Error /submit-booking:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
-    }
+app.post('/submit-booking', async (req, res) => { 
+    // ... โค้ดเดิมถูกปิด ...
 });
 */
 // ----------------------------------------------------
@@ -247,28 +239,20 @@ app.post('/api/activities', authenticateToken, isAdmin, upload.single('imageUrl'
     }
 });
 
-/*
-// ❗️ [ปิดการใช้งาน] ❗️ Endpoint นี้ถูกแทนที่ด้วย POST /api/bookings
-app.post('/api/bookings/create', authenticateToken, isAdmin, async (req, res) => {
-    // ... โค้ดเก่า ...
-});
-*/
-
-// ⭐️ [แก้ไข] ⭐️ Endpoint สำหรับ Admin สร้างการจอง (ตรงกับ Frontend)
+// ⭐️ [แก้ไข] ⭐️ Endpoint สำหรับ Admin สร้างการจอง
 app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
     try {
-        // [แก้ไข] รับข้อมูลชุดใหม่จาก req.body
         const { 
             eventName, bookingDate, timeSlot, contactName, 
             email, phone, roomLayout, equipment, break: breakRequest, details 
         } = req.body;
         
         if (!eventName || !bookingDate || !timeSlot || !contactName || !email) {
-            return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน (ชื่องาน, วันที่, ช่วงเวลา, ผู้ติดต่อ, อีเมล)' });
+            return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' });
         }
         
         const newBooking = new Booking({
-            room: 'ห้องประชุม', // [ใหม่] Hardcode ตามที่ frontend ส่งมา
+            room: 'ห้องประชุม',
             eventName,
             bookingDate: new Date(bookingDate),
             timeSlot,
@@ -298,61 +282,28 @@ app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
 
 
 // --- 9. API Endpoints (GET - สาธารณะ) ---
-// ( ... app.get('/public/news', ...) ... เหมือนเดิม)
-// ( ... app.get('/public/activities', ...) ... เหมือนเดิม)
-
-
-// ⭐️ [แก้ไข] ⭐️ Endpoint สำหรับปฏิทินสาธารณะ (ใช้ Schema ใหม่)
-app.get('/public/bookings', async (req, res) => {
+app.get('/public/news', async (req, res) => {
     try {
-        // [แก้ไข] ดึงเฉพาะฟิลด์ที่จำเป็นตาม Schema ใหม่
-        const bookings = await Booking.find({})
-                                      .select('room bookingDate timeSlot eventName'); 
-                                      
-        const events = bookings.map(b => {
-            // ดึงเฉพาะส่วนวันที่ (YYYY-MM-DD)
-            const dateStr = b.bookingDate.toISOString().split('T')[0];
-            let startTime, endTime;
-
-            // [ใหม่] กำหนดเวลาเริ่มต้นและสิ้นสุดตาม timeSlot
-            if (b.timeSlot === 'morning') {
-                startTime = '08:30';
-                endTime = '12:30';
-            } else if (b.timeSlot === 'afternoon') {
-                startTime = '13:00';
-                endTime = '17:00';
-            } else {
-                // กรณีฉุกเฉิน หรือ timeSlot ไม่ตรง
-                startTime = '00:00';
-                endTime = '23:59'; 
-            }
-            
-            // สร้าง ISO 8601 string สำหรับปฏิทิน
-            const startISO = `${dateStr}T${startTime}:00`;
-            const endISO = `${dateStr}T${endTime}:00`;
-
-            return {
-                // [แก้ไข] แสดงชื่องาน หรือ ห้องที่จอง
-                title: `${b.eventName || b.room} (${b.timeSlot === 'morning' ? 'เช้า' : 'บ่าย'})`,
-                start: startISO,
-                end: endISO,
-                color: '#dc3545', // สีแดงสำหรับรายการจอง
-                display: 'block'
-            };
-        });
-
-        res.json(events); 
-
+        const news = await News.find({}).sort({ publishedAt: -1 });
+        res.json(news);
     } catch (error) {
-        console.error('Error /public/bookings:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลปฏิทิน' });
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    }
+});
+
+app.get('/public/activities', async (req, res) => {
+    try {
+        const activities = await Activity.find({}).sort({ date: -1 });
+        res.json(activities);
+    } catch (error) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
     }
 });
 
 /*
 // ❗️ [ปิดการใช้งาน] ❗️ Endpoint นี้จะพังเพราะ bookingSchema เปลี่ยนไป
 app.get('/public/bookings', async (req, res) => {
-    // ... โค้ดเก่า ...
+    // ... โค้ดเดิมถูกปิด ...
 });
 */
 // ----------------------------------------------------
@@ -360,7 +311,7 @@ app.get('/public/bookings', async (req, res) => {
 
 // --- 10. API Endpoints (GET - ป้องกัน Admin) ---
 app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => {
-    // ... (โค้ดเหมือนเดิม - แต่ bookingAgg อาจจะต้องปรับ logic ใหม่) ...
+    // ... (โค้ด dashboard-stats เหมือนเดิม) ...
     console.log("กำลังดึงข้อมูล /api/dashboard-stats (ยืนยันสิทธิ์แล้ว)"); 
     
     const filter = req.query.filter || 'month';
@@ -431,7 +382,6 @@ app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => 
 
 app.get('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
     try {
-        // [แก้ไข] Sorter ให้เป็น bookingDate (วันที่จอง) แทน submittedAt (วันที่ส่ง)
         const bookings = await Booking.find({}).sort({ bookingDate: -1 }); 
         res.json(bookings);
     } catch (error) {
@@ -448,7 +398,25 @@ app.get('/api/contacts', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
+// ⭐️ [ใหม่] ⭐️ Endpoint สำหรับดึงรายละเอียดข้อมูลติดต่อ
+app.get('/api/contacts/:id', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'ID ข้อมูลติดต่อไม่ถูกต้อง' });
+        }
+        const contactItem = await Contact.findById(id);
+        if (!contactItem) {
+            return res.status(404).json({ message: 'ไม่พบข้อมูลติดต่อนี้' });
+        }
+        res.json(contactItem);
+    } catch (error) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    }
+});
+
 app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const users = await User.find({}).select('-password'); 
         res.json(users);
@@ -458,6 +426,7 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.get('/api/news', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const news = await News.find({}).sort({ publishedAt: -1 });
         res.json(news);
@@ -467,6 +436,7 @@ app.get('/api/news', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.get('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -483,6 +453,7 @@ app.get('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.get('/api/activities', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const activities = await Activity.find({}).sort({ date: -1 });
         res.json(activities);
@@ -492,6 +463,7 @@ app.get('/api/activities', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.get('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -510,6 +482,7 @@ app.get('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
 
 // --- 11. API Endpoints (PUT - ป้องกัน Admin) ---
 app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
         const { title, category, content } = req.body;
@@ -517,17 +490,11 @@ app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), 
             return res.status(400).json({ message: 'กรุณากรอกหัวข้อและเนื้อหา' });
         }
         const updateData = {
-            title,
-            category: category || 'ทั่วไป',
-            content
+            title, category: category || 'ทั่วไป', content
         };
-        if (req.file) {
-            updateData.imageUrl = `/uploads/${req.file.filename}`;
-        }
+        if (req.file) { updateData.imageUrl = `/uploads/${req.file.filename}`; }
         const updatedNews = await News.findByIdAndUpdate( id, updateData, { new: true } );
-        if (!updatedNews) {
-            return res.status(404).json({ message: 'ไม่พบข่าวนี้' });
-        }
+        if (!updatedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
         res.json({ status: 'success', message: 'อัปเดตข่าวสำเร็จ', data: updatedNews });
     } catch (error) {
         console.error('Error /api/news/:id PUT:', error);
@@ -536,6 +503,7 @@ app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), 
 });
 
 app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
         const { title, date, content } = req.body;
@@ -543,17 +511,11 @@ app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageU
             return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' });
         }
         const updateData = {
-            title,
-            date: new Date(date), 
-            content
+            title, date: new Date(date), content
         };
-        if (req.file) {
-            updateData.imageUrl = `/uploads/${req.file.filename}`;
-        }
+        if (req.file) { updateData.imageUrl = `/uploads/${req.file.filename}`; }
         const updatedActivity = await Activity.findByIdAndUpdate( id, updateData, { new: true } );
-        if (!updatedActivity) {
-            return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' });
-        }
+        if (!updatedActivity) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
         res.json({ status: 'success', message: 'อัปเดตกิจกรรมสำเร็จ', data: updatedActivity });
     } catch (error) {
         console.error('Error /api/activities/:id PUT:', error);
@@ -561,43 +523,22 @@ app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageU
     }
 });
 
-// ⭐️ [ใหม่] ⭐️ เพิ่ม Endpoint สำหรับ "แก้ไข" การจอง
 app.put('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID การจองไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID การจองไม่ถูกต้อง' }); }
 
-        // [ใหม่] รับข้อมูลชุดใหม่
-        const { 
-            eventName, bookingDate, timeSlot, contactName, 
-            email, phone, roomLayout, equipment, break: breakRequest, details 
-        } = req.body;
+        const { eventName, bookingDate, timeSlot, contactName, email, phone, roomLayout, equipment, break: breakRequest, details } = req.body;
 
-        if (!eventName || !bookingDate || !timeSlot || !contactName || !email) {
-            return res.status(400).json({ message: 'ข้อมูลไม่ครบถ้วน' });
-        }
+        if (!eventName || !bookingDate || !timeSlot || !contactName || !email) { return res.status(400).json({ message: 'ข้อมูลไม่ครบถ้วน' }); }
 
         const updateData = {
-            eventName,
-            bookingDate: new Date(bookingDate),
-            timeSlot,
-            contactName,
-            email,
-            phone,
-            roomLayout,
-            equipment,
-            break: breakRequest || false,
-            details
+            eventName, bookingDate: new Date(bookingDate), timeSlot, contactName, email, phone, roomLayout, equipment, break: breakRequest || false, details
         };
 
         const updatedBooking = await Booking.findByIdAndUpdate( id, updateData, { new: true } );
-
-        if (!updatedBooking) {
-            return res.status(404).json({ message: 'ไม่พบการจองนี้' });
-        }
-
+        if (!updatedBooking) { return res.status(404).json({ message: 'ไม่พบการจองนี้' }); }
         res.json({ status: 'success', message: 'อัปเดตการจองสำเร็จ', data: updatedBooking });
 
     } catch (error) {
@@ -609,12 +550,11 @@ app.put('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => {
 
 // --- 12. API Endpoints (DELETE - ป้องกัน Admin) ---
 app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
         const deletedUser = await User.findByIdAndDelete(id);
-        if (!deletedUser) {
-            return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' });
-        }
+        if (!deletedUser) { return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' }); }
         res.json({ status: 'success', message: `ลบผู้ใช้ ${deletedUser.username} สำเร็จ` });
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -622,15 +562,12 @@ app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.delete('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
         const deletedNews = await News.findByIdAndDelete(id);
-        if (!deletedNews) {
-            return res.status(404).json({ message: 'ไม่พบข่าวนี้' });
-        }
+        if (!deletedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
         res.json({ status: 'success', message: 'ลบข่าวสำเร็จ' });
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -638,15 +575,12 @@ app.delete('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.delete('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID กิจกรรมไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID กิจกรรมไม่ถูกต้อง' }); }
         const deletedActivity = await Activity.findByIdAndDelete(id);
-        if (!deletedActivity) {
-            return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' });
-        }
+        if (!deletedActivity) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
         res.json({ status: 'success', message: 'ลบกิจกรรมสำเร็จ' });
     } catch (error) {
         console.error('Error /api/activities/:id DELETE:', error);
@@ -655,22 +589,36 @@ app.delete('/api/activities/:id', authenticateToken, isAdmin, async (req, res) =
 });
 
 app.delete('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => {
+    // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID การจองไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID การจองไม่ถูกต้อง' }); }
         const deletedBooking = await Booking.findByIdAndDelete(id);
-        if (!deletedBooking) {
-            return res.status(404).json({ message: 'ไม่พบรายการจองนี้' });
-        }
+        if (!deletedBooking) { return res.status(404).json({ message: 'ไม่พบรายการจองนี้' }); }
         res.json({ status: 'success', message: 'ลบรายการจองสำเร็จ' });
     } catch (error) {
         console.error('Error /api/bookings/:id DELETE:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
     }
 });
-// ----------------------------------------------------
+
+// ⭐️ [ใหม่] ⭐️ Endpoint สำหรับลบข้อมูลติดต่อ
+app.delete('/api/contacts/:id', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'ID ข้อมูลติดต่อไม่ถูกต้อง' });
+        }
+        const deletedContact = await Contact.findByIdAndDelete(id);
+        if (!deletedContact) {
+            return res.status(404).json({ message: 'ไม่พบข้อมูลติดต่อนี้' });
+        }
+        res.json({ status: 'success', message: 'ลบข้อมูลติดต่อสำเร็จ' });
+    } catch (error) {
+        console.error('Error /api/contacts/:id DELETE:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
+    }
+});
 
 
 // 13. (สำคัญ) สั่งให้เชื่อมต่อฐานข้อมูล "ก่อน" แล้วค่อยเปิดเซิร์ฟเวอร์
