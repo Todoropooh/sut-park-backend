@@ -452,21 +452,39 @@ app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), 
     }
 });
 
+// ⭐️ [สำคัญ] ⭐️ แก้ไข Endpoint PUT /api/activities/:id ใน Backend ของคุณ
 app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
-    // ... (โค้ดเหมือนเดิม) ...
-    try {
-        const { id } = req.params;
-        const { title, date, content } = req.body;
-        if (!title || !date || !content) { return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' }); }
-        const updateData = { title, date: new Date(date), content };
-        if (req.file) { updateData.imageUrl = `/uploads/${req.file.filename}`; }
-        const updatedActivity = await Activity.findByIdAndUpdate( id, updateData, { new: true } );
-        if (!updatedActivity) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
-        res.json({ status: 'success', message: 'อัปเดตกิจกรรมสำเร็จ', data: updatedActivity });
-    } catch (error) {
-        console.error('Error /api/activities/:id PUT:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
+    try {
+        const { id } = req.params;
+        const { title, date, content } = req.body;
+        // ⭐️ [เพิ่ม] รับ imageUrl จาก body ด้วย (กรณีที่ไม่ได้อัปโหลดไฟล์ใหม่)
+        let { imageUrl: existingImageUrlFromForm } = req.body; 
+
+        if (!title || !date || !content) { return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' }); }
+        
+        const updateData = { title, date: new Date(date), content };
+
+        if (req.file) {
+            // กรณีมีการอัปโหลดไฟล์รูปใหม่
+            updateData.imageUrl = `/uploads/${req.file.filename}`;
+        } else if (existingImageUrlFromForm === '') {
+            // ⭐️ [ใหม่] กรณี Frontend ส่ง imageUrl เป็น string ว่างเปล่า (หมายถึงต้องการลบรูปภาพเดิม)
+            updateData.imageUrl = ''; // ตั้งค่าให้เป็นว่างเปล่า
+            // 💡 [Optional] ตรงนี้คุณสามารถเพิ่มโค้ดเพื่อลบไฟล์รูปภาพเก่าออกจาก Server ได้
+            // เช่น fs.unlink(path.join(__dirname, 'uploads', 'ชื่อไฟล์เก่า'))
+        } else if (existingImageUrlFromForm) {
+            // ⭐️ [ใหม่] กรณีไม่ได้อัปโหลดไฟล์ใหม่ แต่มี URL รูปภาพเดิมที่ส่งมาจากฟอร์ม
+            updateData.imageUrl = existingImageUrlFromForm;
+        }
+        // ถ้าไม่มีทั้งไฟล์ใหม่และไม่ได้ส่ง imageUrl มา Backend จะไม่แก้ไข field นี้
+
+        const updatedActivity = await Activity.findByIdAndUpdate( id, updateData, { new: true } );
+        if (!updatedActivity) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
+        res.json({ status: 'success', message: 'อัปเดตกิจกรรมสำเร็จ', data: updatedActivity });
+    } catch (error) {
+        console.error('Error /api/activities/:id PUT:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    }
 });
 
 app.put('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => {
