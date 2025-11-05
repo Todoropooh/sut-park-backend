@@ -286,16 +286,19 @@ app.get('/public/bookings', async (req, res) => { // ... โค้ดเดิ�
 // ----------------------------------------------------
 
 
-// --- 10. API Endpoints (GET - ป้องกัน Admin) ---
+// ในไฟล์ Backend ของคุณ (ส่วนที่ 10. API Endpoints (GET - ป้องกัน Admin))
+
+// [แก้ไข] Endpoint สำหรับดึงข้อมูลสถิติสำหรับ Dashboard
 app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => {
-    // ... (โค้ด dashboard-stats เหมือนเดิม) ...
     console.log("กำลังดึงข้อมูล /api/dashboard-stats (ยืนยันสิทธิ์แล้ว)"); 
     
+    // กำหนด filter พื้นฐาน: month
     const filter = req.query.filter || 'month';
     let groupingId;
     let sortCriteria;
     let labelFormat;
 
+    // กำหนดรูปแบบการจัดกลุ่มตาม filter
     switch (filter) {
         case 'day':
             groupingId = { day: { $dayOfMonth: "$bookingDate" }, month: { $month: "$bookingDate" }, year: { $year: "$bookingDate" } };
@@ -316,28 +319,42 @@ app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => 
     }
 
     try {
+        // ดึงยอดรวม 4 ส่วน
         const newsCount = await News.countDocuments();
         const bookingCount = await Booking.countDocuments();
         const userCount = await User.countDocuments();
         const activityCount = await Activity.countDocuments(); 
 
+        // 1. Aggregation สำหรับกราฟการจอง (Booking Agg)
         const bookingAgg = await Booking.aggregate([
             { $group: { _id: groupingId, count: { $sum: 1 } } },
             { $sort: sortCriteria }, 
             { $project: { _id: 0, label: labelFormat, count: 1 } }
         ]);
         
-        const bookingChartData = { labels: bookingAgg.map(item => item.label), data: bookingAgg.map(item => item.count) };
+        const bookingChartData = {
+            labels: bookingAgg.map(item => item.label),
+            data: bookingAgg.map(item => item.count)
+        };
+        
+        // 2. Aggregation สำหรับกราฟหมวดหมู่ข่าว (News Agg)
         const newsAgg = await News.aggregate([
             { $group: { _id: "$category", count: { $sum: 1 } } },
             { $sort: { _id: 1 } }
         ]);
         
-        const newsChartData = { labels: newsAgg.map(item => item._id || 'ทั่วไป'), data: newsAgg.map(item => item.count) };
+        const newsChartData = {
+            labels: newsAgg.map(item => item._id || 'ทั่วไป'),
+            data: newsAgg.map(item => item.count)
+        };
 
         res.json({
-            newsTotal: newsCount, bookingsTotal: bookingCount, usersTotal: userCount, activitiesTotal: activityCount, 
-            bookingChartData: bookingChartData, newsChartData: newsChartData
+            newsTotal: newsCount,
+            bookingsTotal: bookingCount,
+            usersTotal: userCount,
+            activitiesTotal: activityCount, 
+            bookingChartData: bookingChartData,
+            newsChartData: newsChartData
         });
 
     } catch (error) {
