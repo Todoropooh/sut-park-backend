@@ -4,12 +4,12 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
+const multer = require('multer'); 
+const path = require('path'); 
 
 // 2. ⭐️ [แก้ไข] ⭐️ ดึง "ความลับ" จาก Environment Variables
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux2ke37SFIjaXW5@sutpark.h7aiwyt.mongodb.net/sut_park_db?appName=sutpark";
-const JWT_SECRET = process.env.JWT_SECRET || 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!'; 
+const JWT_SECRET = process.env.PORT || 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!'; 
 
 // 3. ⭐️ [แก้ไข] ⭐️ ตั้งค่าพอร์ต (Port)
 const app = express();
@@ -32,7 +32,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 // --- 5. สร้าง "พิมพ์เขียว" (Schema) ทั้งหมด ---
-// (Contact Schema - ถูกต้อง)
+// (Contact Schema)
 const contactSchema = new mongoose.Schema({ name: { type: String, required: true }, email: { type: String, required: true }, message: { type: String }, submittedAt: { type: Date, default: Date.now } });
 const Contact = mongoose.model('Contact', contactSchema);
 
@@ -53,7 +53,7 @@ const bookingSchema = new mongoose.Schema({
 });
 const Booking = mongoose.model('Booking', bookingSchema);
 
-// (User Schema - ถูกต้อง)
+// (User Schema)
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -65,7 +65,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.model('User', userSchema);
 
-// (News Schema - ถูกต้อง)
+// (News Schema)
 const newsSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: { type: String }, 
@@ -75,7 +75,7 @@ const newsSchema = new mongoose.Schema({
 });
 const News = mongoose.model('News', newsSchema);
 
-// (Activity Schema - ถูกต้อง)
+// (Activity Schema)
 const activitySchema = new mongoose.Schema({
     title: { type: String, required: true },
     date: { type: Date, required: true },
@@ -182,9 +182,7 @@ app.post('/api/users/create', authenticateToken, isAdmin, async (req, res) => {
             return res.status(400).json({ message: 'Username นี้ถูกใช้งานแล้ว' });
         }
         const newUser = new User({
-            username,
-            password, 
-            isAdmin: isAdmin || false
+            username, password, isAdmin: isAdmin || false
         });
         await newUser.save();
         res.status(201).json({ status: 'success', message: `สร้างผู้ใช้ ${username} สำเร็จ` });
@@ -203,11 +201,7 @@ app.post('/api/add-news', authenticateToken, isAdmin, upload.single('imageUrl'),
     }
     try {
         const newNewsItem = new News({ 
-            title, 
-            category: category || 'ทั่วไป', 
-            content, 
-            imageUrl: imageUrlPath, 
-            publishedAt: new Date() 
+            title, category: category || 'ทั่วไป', content, imageUrl: imageUrlPath, publishedAt: new Date() 
         });
         await newNewsItem.save();
         res.status(201).json({ status: 'success', message: `สร้างข่าว "${title}" สำเร็จ` });
@@ -223,13 +217,10 @@ app.post('/api/activities', authenticateToken, isAdmin, upload.single('imageUrl'
         const { title, date, content } = req.body;
         const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
         if (!title || !date || !content) {
-            return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน (หัวข้อ, วันที่, เนื้อหา)' });
+            return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' });
         }
         const newActivity = new Activity({
-            title,
-            date: new Date(date), 
-            content,
-            imageUrl: imageUrlPath
+            title, date: new Date(date), content, imageUrl: imageUrlPath
         });
         await newActivity.save();
         res.status(201).json({ status: 'success', message: 'เพิ่มกิจกรรมใหม่สำเร็จ' });
@@ -253,25 +244,13 @@ app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
         
         const newBooking = new Booking({
             room: 'ห้องประชุม',
-            eventName,
-            bookingDate: new Date(bookingDate),
-            timeSlot,
-            contactName,
-            email,
-            phone,
-            roomLayout,
-            equipment,
-            break: breakRequest || false,
-            details
+            eventName, bookingDate: new Date(bookingDate), timeSlot, contactName, 
+            email, phone, roomLayout, equipment, break: breakRequest || false, details
         });
         
         await newBooking.save();
         
-        res.status(201).json({ 
-            status: 'success', 
-            message: `สร้างการจอง "${eventName}" สำเร็จ`,
-            data: newBooking
-        });
+        res.status(201).json({ status: 'success', message: `สร้างการจอง "${eventName}" สำเร็จ`, data: newBooking });
         
     } catch (error) {
         console.error('Error /api/bookings POST:', error);
@@ -302,9 +281,7 @@ app.get('/public/activities', async (req, res) => {
 
 /*
 // ❗️ [ปิดการใช้งาน] ❗️ Endpoint นี้จะพังเพราะ bookingSchema เปลี่ยนไป
-app.get('/public/bookings', async (req, res) => {
-    // ... โค้ดเดิมถูกปิด ...
-});
+app.get('/public/bookings', async (req, res) => { // ... โค้ดเดิมถูกปิด ... });
 */
 // ----------------------------------------------------
 
@@ -350,28 +327,17 @@ app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => 
             { $project: { _id: 0, label: labelFormat, count: 1 } }
         ]);
         
-        const bookingChartData = {
-            labels: bookingAgg.map(item => item.label),
-            data: bookingAgg.map(item => item.count)
-        };
-        
+        const bookingChartData = { labels: bookingAgg.map(item => item.label), data: bookingAgg.map(item => item.count) };
         const newsAgg = await News.aggregate([
             { $group: { _id: "$category", count: { $sum: 1 } } },
             { $sort: { _id: 1 } }
         ]);
         
-        const newsChartData = {
-            labels: newsAgg.map(item => item._id || 'ทั่วไป'),
-            data: newsAgg.map(item => item.count)
-        };
+        const newsChartData = { labels: newsAgg.map(item => item._id || 'ทั่วไป'), data: newsAgg.map(item => item.count) };
 
         res.json({
-            newsTotal: newsCount,
-            bookingsTotal: bookingCount,
-            usersTotal: userCount,
-            activitiesTotal: activityCount, 
-            bookingChartData: bookingChartData,
-            newsChartData: newsChartData
+            newsTotal: newsCount, bookingsTotal: bookingCount, usersTotal: userCount, activitiesTotal: activityCount, 
+            bookingChartData: bookingChartData, newsChartData: newsChartData
         });
 
     } catch (error) {
@@ -398,17 +364,13 @@ app.get('/api/contacts', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ⭐️ [ใหม่] ⭐️ Endpoint สำหรับดึงรายละเอียดข้อมูลติดต่อ
+// ⭐️ [เพิ่ม] ⭐️ Endpoint สำหรับดึงรายละเอียดข้อมูลติดต่อ
 app.get('/api/contacts/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID ข้อมูลติดต่อไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข้อมูลติดต่อไม่ถูกต้อง' }); }
         const contactItem = await Contact.findById(id);
-        if (!contactItem) {
-            return res.status(404).json({ message: 'ไม่พบข้อมูลติดต่อนี้' });
-        }
+        if (!contactItem) { return res.status(404).json({ message: 'ไม่พบข้อมูลติดต่อนี้' }); }
         res.json(contactItem);
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -439,13 +401,9 @@ app.get('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
     // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
         const newsItem = await News.findById(id);
-        if (!newsItem) {
-            return res.status(404).json({ message: 'ไม่พบข่าวนี้' });
-        }
+        if (!newsItem) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
         res.json(newsItem);
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -466,13 +424,9 @@ app.get('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
     // ... (โค้ดเหมือนเดิม) ...
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'ID กิจกรรมไม่ถูกต้อง' });
-        }
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID กิจกรรมไม่ถูกต้อง' }); }
         const activityItem = await Activity.findById(id);
-        if (!activityItem) {
-            return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' });
-        }
+        if (!activityItem) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
         res.json(activityItem);
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -486,12 +440,8 @@ app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), 
     try {
         const { id } = req.params;
         const { title, category, content } = req.body;
-        if (!title || !content) {
-            return res.status(400).json({ message: 'กรุณากรอกหัวข้อและเนื้อหา' });
-        }
-        const updateData = {
-            title, category: category || 'ทั่วไป', content
-        };
+        if (!title || !content) { return res.status(400).json({ message: 'กรุณากรอกหัวข้อและเนื้อหา' }); }
+        const updateData = { title, category: category || 'ทั่วไป', content };
         if (req.file) { updateData.imageUrl = `/uploads/${req.file.filename}`; }
         const updatedNews = await News.findByIdAndUpdate( id, updateData, { new: true } );
         if (!updatedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
@@ -507,12 +457,8 @@ app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageU
     try {
         const { id } = req.params;
         const { title, date, content } = req.body;
-        if (!title || !date || !content) {
-            return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' });
-        }
-        const updateData = {
-            title, date: new Date(date), content
-        };
+        if (!title || !date || !content) { return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' }); }
+        const updateData = { title, date: new Date(date), content };
         if (req.file) { updateData.imageUrl = `/uploads/${req.file.filename}`; }
         const updatedActivity = await Activity.findByIdAndUpdate( id, updateData, { new: true } );
         if (!updatedActivity) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
@@ -602,7 +548,7 @@ app.delete('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => 
     }
 });
 
-// ⭐️ [ใหม่] ⭐️ Endpoint สำหรับลบข้อมูลติดต่อ
+// ⭐️ [เพิ่ม] ⭐️ Endpoint สำหรับลบข้อมูลติดต่อ
 app.delete('/api/contacts/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
