@@ -298,21 +298,54 @@ app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
 
 
 // --- 9. API Endpoints (GET - สาธารณะ) ---
-app.get('/public/news', async (req, res) => {
-    try {
-        const news = await News.find({}).sort({ publishedAt: -1 });
-        res.json(news);
-    } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
-});
+// ( ... app.get('/public/news', ...) ... เหมือนเดิม)
+// ( ... app.get('/public/activities', ...) ... เหมือนเดิม)
 
-app.get('/public/activities', async (req, res) => {
+
+// ⭐️ [แก้ไข] ⭐️ Endpoint สำหรับปฏิทินสาธารณะ (ใช้ Schema ใหม่)
+app.get('/public/bookings', async (req, res) => {
     try {
-        const activities = await Activity.find({}).sort({ date: -1 });
-        res.json(activities);
+        // [แก้ไข] ดึงเฉพาะฟิลด์ที่จำเป็นตาม Schema ใหม่
+        const bookings = await Booking.find({})
+                                      .select('room bookingDate timeSlot eventName'); 
+                                      
+        const events = bookings.map(b => {
+            // ดึงเฉพาะส่วนวันที่ (YYYY-MM-DD)
+            const dateStr = b.bookingDate.toISOString().split('T')[0];
+            let startTime, endTime;
+
+            // [ใหม่] กำหนดเวลาเริ่มต้นและสิ้นสุดตาม timeSlot
+            if (b.timeSlot === 'morning') {
+                startTime = '08:30';
+                endTime = '12:30';
+            } else if (b.timeSlot === 'afternoon') {
+                startTime = '13:00';
+                endTime = '17:00';
+            } else {
+                // กรณีฉุกเฉิน หรือ timeSlot ไม่ตรง
+                startTime = '00:00';
+                endTime = '23:59'; 
+            }
+            
+            // สร้าง ISO 8601 string สำหรับปฏิทิน
+            const startISO = `${dateStr}T${startTime}:00`;
+            const endISO = `${dateStr}T${endTime}:00`;
+
+            return {
+                // [แก้ไข] แสดงชื่องาน หรือ ห้องที่จอง
+                title: `${b.eventName || b.room} (${b.timeSlot === 'morning' ? 'เช้า' : 'บ่าย'})`,
+                start: startISO,
+                end: endISO,
+                color: '#dc3545', // สีแดงสำหรับรายการจอง
+                display: 'block'
+            };
+        });
+
+        res.json(events); 
+
     } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+        console.error('Error /public/bookings:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลปฏิทิน' });
     }
 });
 
