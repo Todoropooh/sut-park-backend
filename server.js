@@ -510,6 +510,56 @@ app.put('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => {
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปเดตการจอง' });
     }
 });
+// ในไฟล์ Backend ของคุณ (ส่วนที่ 11. API Endpoints (PUT))
+
+// [ใหม่] Endpoint สำหรับแก้ไขสิทธิ์ (isAdmin)
+app.put('/api/users/:id/update-role', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isAdmin } = req.body;
+        
+        if (typeof isAdmin !== 'boolean') {
+            return res.status(400).json({ message: 'รูปแบบข้อมูลสิทธิ์ไม่ถูกต้อง' });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate( id, { isAdmin }, { new: true } ).select('-password');
+        
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' });
+        }
+
+        res.json({ status: 'success', message: `อัปเดตสิทธิ์ผู้ใช้ ${updatedUser.username} เป็น ${isAdmin ? 'Admin' : 'User'} สำเร็จ`, user: updatedUser });
+    } catch (error) {
+        console.error('Error /api/users/:id/update-role PUT:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปเดตสิทธิ์' });
+    }
+});
+
+// [ใหม่] Endpoint สำหรับเปลี่ยนรหัสผ่าน
+app.put('/api/users/:id/change-password', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+        
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ message: 'กรุณากรอกรหัสผ่านใหม่ที่มีอย่างน้อย 6 ตัวอักษร' });
+        }
+        
+        // Hash รหัสผ่านใหม่
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        const updatedUser = await User.findByIdAndUpdate( id, { password: hashedPassword }, { new: true } ).select('-password');
+        
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' });
+        }
+
+        res.json({ status: 'success', message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
+    } catch (error) {
+        console.error('Error /api/users/:id/change-password PUT:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน' });
+    }
+});
 // ----------------------------------------------------
 
 // --- 12. API Endpoints (DELETE - ป้องกัน Admin) ---
