@@ -17,8 +17,23 @@ const app = express();
 const port = process.env.PORT || 3000; 
 
 // 4. ตั้งค่าเซิร์ฟเวอร์
-app.use(cors());
+// app.use(cors()); // ⬅️ เราจะปิดตัวนี้ แล้วใช้ตัวที่ละเอียดกว่าด้านล่าง
 app.use(express.json()); 
+
+// ⭐️ [แก้ไข] ⭐️ --- ตั้งค่า CORS Policy (แก้ปัญหา "blocked by CORS policy") ---
+const corsOptions = {
+    // ใส่ URL ของ Frontend ที่คุณใช้ทดสอบ (localhost)
+    // และ URL ของ Frontend ที่คุณจะใช้จริง (เช่น Vercel, Netlify)
+    origin: [
+        'http://localhost:3000', // ⬅️ อนุญาต Frontend (Next.js) ตอนพัฒนา
+        'http://localhost:3001', // ⬅️ (เผื่อไว้)
+        'https://sut-park-a.vercel.app' // ⬅️ ⭐️⭐️ ใส่ URL ของ Frontend (Vercel) ที่ใช้งานจริง ⭐️⭐️
+        // (ถ้า URL ของ Frontend ไม่ใช่ sut-park-a.vercel.app ให้แก้ให้ถูกนะครับ)
+    ],
+    methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS', // อนุญาต Methods ที่จำเป็น
+    allowedHeaders: 'Content-Type,Authorization' // อนุญาต Headers ที่จำเป็น
+};
+app.use(cors(corsOptions)); // ⬅️ สั่งใช้งาน CORS ที่ตั้งค่าไว้
 
 // --- การตั้งค่า Multer (สำหรับรูปภาพ News/Activities) ---
 const storage = multer.diskStorage({
@@ -35,7 +50,7 @@ const documentUploadDir = path.join(__dirname, 'uploads/documents');
 if (!fs.existsSync(documentUploadDir)){
     fs.mkdirSync(documentUploadDir, { recursive: true });
 }
-
+// (โค้ดส่วนที่เหลือของคุณเหมือนเดิมทั้งหมด)
 // 4.2. ตั้งค่า Storage Engine สำหรับเอกสาร (ใช้ชื่อแบบป้องกันการซ้ำ)
 const documentStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -52,18 +67,17 @@ const documentStorage = multer.diskStorage({
 
 // 4.3. สร้าง instance ของ multer สำหรับเอกสาร
 const documentUpload = multer({ storage: documentStorage });
-// (เราใช้ app.use('/uploads', ...) ตัวเดิมได้เลย เพราะมันครอบคลุม /uploads/documents อยู่แล้ว)
 // ----------------------------------------------------
 
 
 // --- 5. สร้าง "พิมพ์เขียว" (Schema) ทั้งหมด ---
-// ⭐️ [แก้ไข] ⭐️ เพิ่ม isRead ใน Contact Schema
+// (Contact Schema)
 const contactSchema = new mongoose.Schema({ 
     name: { type: String, required: true }, 
     email: { type: String, required: true }, 
     message: { type: String }, 
     submittedAt: { type: Date, default: Date.now },
-    isRead: { type: Boolean, default: false } // ⭐️ เพิ่มบรรทัดนี้
+    isRead: { type: Boolean, default: false } 
 });
 const Contact = mongoose.model('Contact', contactSchema);
 
@@ -121,16 +135,16 @@ const documentSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
-    storedFilename: { // ชื่อไฟล์ที่เก็บจริงบนเซิร์ฟเวอร์
+    storedFilename: { 
         type: String, 
         required: true, 
         unique: true 
     },
-    path: { // URL path ที่จะใช้ดาวน์โหลด
+    path: { 
         type: String, 
         required: true 
     },
-    description: { // คำอธิบายไฟล์
+    description: { 
         type: String, 
         required: false 
     },
@@ -144,7 +158,6 @@ const Document = mongoose.model('Document', documentSchema);
 
 // --- 6. Middleware สำหรับตรวจสอบ JWT Token ---
 const authenticateToken = (req, res, next) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; 
     if (token == null) {
@@ -159,7 +172,6 @@ const authenticateToken = (req, res, next) => {
     });
 };
 const isAdmin = (req, res, next) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     if (!req.user || !req.user.isAdmin) {
         return res.status(403).json({ message: 'คุณไม่มีสิทธิ์ผู้ดูแลระบบ' });
     }
@@ -169,7 +181,6 @@ const isAdmin = (req, res, next) => {
 
 // --- 7. API Endpoints (POST - สาธารณะ) ---
 app.post('/submit-form', async (req, res) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     try {
         const { name, email, message } = req.body;
         if (!name || !email) { return res.status(400).json({ message: 'กรุณากรอกชื่อและอีเมล' }); }
@@ -181,13 +192,10 @@ app.post('/submit-form', async (req, res) => {
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
     }
 });
-
-/* [ปิดการใช้งาน] app.post('/submit-booking', ...) */
 // ----------------------------------------------------
 
 // --- 8. API Endpoints (POST - ระบบ Admin) ---
 app.post('/api/login', async (req, res) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     try {
         const { username, password } = req.body;
         if (!username || !password) { return res.status(400).json({ message: 'กรุณากรอก Username และ Password' }); }
@@ -205,7 +213,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/users/create', authenticateToken, isAdmin, async (req, res) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     try {
         const { username, password, isAdmin } = req.body;
         if (!username || !password) { return res.status(400).json({ message: 'กรุณากรอก Username และ Password' }); }
@@ -221,7 +228,6 @@ app.post('/api/users/create', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.post('/api/add-news', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     const { title, category, content } = req.body;
     const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
     if (!title || !content) { return res.status(400).json({ message: 'กรุณากรอกหัวข้อ และเนื้อหาข่าว' }); }
@@ -236,7 +242,6 @@ app.post('/api/add-news', authenticateToken, isAdmin, upload.single('imageUrl'),
 });
 
 app.post('/api/activities', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     try {
         const { title, date, content } = req.body;
         const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
@@ -251,7 +256,6 @@ app.post('/api/activities', authenticateToken, isAdmin, upload.single('imageUrl'
 });
 
 app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
-    // ... (โค้ดส่วนนี้ของคุณเหมือนเดิม)
     try {
         const { eventName, bookingDate, timeSlot, contactName, email, phone, roomLayout, equipment, break: breakRequest, details } = req.body;
         if (!eventName || !bookingDate || !timeSlot || !contactName || !email) { return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' }); }
@@ -267,7 +271,6 @@ app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
 
 
 // --- 9. API Endpoints (GET - สาธารณะ) ---
-// ... (โค้ดส่วนนี้ของคุณเหมือนเดิม /public/news, /public/activities, /public/bookings)
 app.get('/public/news', async (req, res) => {
     try {
         const news = await News.find({}).sort({ publishedAt: -1 });
@@ -307,7 +310,6 @@ app.get('/public/bookings', async (req, res) => {
 
 
 // --- 10. API Endpoints (GET - ป้องกัน Admin) ---
-// ... (โค้ดส่วนนี้ของคุณเหมือนเดิม /api/dashboard-stats, /api/bookings, ... /api/activities/:id)
 app.get('/api/dashboard-stats', authenticateToken, isAdmin, async (req, res) => {
     console.log("กำลังดึงข้อมูล /api/dashboard-stats (ยืนยันสิทธิ์แล้ว)"); 
     const filter = req.query.filter || 'month';
@@ -427,7 +429,6 @@ app.get('/api/activities/:id', authenticateToken, isAdmin, async (req, res) => {
 // ----------------------------------------------------
 
 // --- 11. API Endpoints (PUT/PATCH - ป้องกัน Admin) ---
-// ... (โค้ดส่วนนี้ของคุณเหมือนเดิม /api/news/:id, ... /api/contacts/:id/read)
 app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), async (req, res) => {
     try {
         const { id } = req.params;
@@ -469,7 +470,7 @@ app.put('/api/bookings/:id', authenticateToken, isAdmin, async (req, res) => {
         if (!eventName || !bookingDate || !timeSlot || !contactName || !email) { return res.status(400).json({ message: 'ข้อมูลไม่ครบถ้วน' }); }
         const updateData = { eventName, bookingDate: new Date(bookingDate), timeSlot, contactName, email, phone, roomLayout, equipment, break: breakRequest || false, details };
         const updatedBooking = await Booking.findByIdAndUpdate( id, updateData, { new: true } );
-        if (!updatedBooking) { return res.status(404).json({ message: 'ไม่พบการจองนี้' }); }
+        if (!updatedBooking) { return res.status(4404).json({ message: 'ไม่พบการจองนี้' }); }
         res.json({ status: 'success', message: 'อัปเดตการจองสำเร็จ', data: updatedBooking });
     } catch (error) {
         console.error('Error /api/bookings/:id PUT:', error);
@@ -506,19 +507,19 @@ app.put('/api/users/:id/change-password', authenticateToken, isAdmin, async (req
 app.patch('/api/contacts/:id/read', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { isRead } = req.body; // { isRead: true }
+        const { isRead } = req.body; 
         if (typeof isRead !== 'boolean') {
             return res.status(400).json({ message: 'Invalid isRead value' });
         }
         const contact = await Contact.findByIdAndUpdate(
             id, 
-            { isRead }, // Update object
-            { new: true } // Return the new document
+            { isRead }, 
+            { new: true } 
         );
         if (!contact) {
             return res.status(404).json({ message: 'Contact not found' });
         }
-        res.json(contact); // Send back the updated contact
+        res.json(contact); 
     } catch (error) {
         console.error('Error /api/contacts/:id/read PATCH:', error);
         res.status(500).json({ message: error.message });
@@ -527,12 +528,11 @@ app.patch('/api/contacts/:id/read', authenticateToken, isAdmin, async (req, res)
 // ----------------------------------------------------
 
 // --- 12. API Endpoints (DELETE - ป้องกัน Admin) ---
-// ... (โค้ดส่วนนี้ของคุณเหมือนเดิม /api/users/:id, ... /api/contacts/:id)
 app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const deletedUser = await User.findByIdAndDelete(id);
-        if (!deletedUser) { return res.status(4404).json({ message: 'ไม่พบผู้ใช้นี้' }); }
+        if (!deletedUser) { return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' }); }
         res.json({ status: 'success', message: `ลบผู้ใช้ ${deletedUser.username} สำเร็จ` });
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -588,25 +588,21 @@ app.delete('/api/contacts/:id', authenticateToken, isAdmin, async (req, res) => 
 
 
 // ⭐️ [ใหม่] ⭐️ --- 12.5. API Endpoints (ระบบจัดการเอกสาร) ---
-
-// POST: อัปโหลดเอกสาร
 app.post('/api/documents/upload', authenticateToken, isAdmin, documentUpload.single('documentFile'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'ไม่มีไฟล์ถูกอัปโหลด' });
         }
         
-        // 'documentFile' คือ 'name' ของ <input type="file"> ในหน้า HTML
         const { description } = req.body;
         const { originalname, filename } = req.file;
 
-        // สร้าง URL path ที่ถูกต้อง (จะถูก serve โดย /uploads)
         const fileUrlPath = `/uploads/documents/${filename}`;
         
         const newDocument = new Document({
-            originalFilename: Buffer.from(originalname, 'latin1').toString('utf8'), // เก็บชื่อภาษาไทย
+            originalFilename: Buffer.from(originalname, 'latin1').toString('utf8'), 
             storedFilename: filename,
-            path: fileUrlPath, // เก็บเป็น URL path
+            path: fileUrlPath, 
             description: description || 'ไม่มีคำอธิบาย'
         });
 
@@ -626,7 +622,6 @@ app.post('/api/documents/upload', authenticateToken, isAdmin, documentUpload.sin
 // GET: ดึงข้อมูลเอกสารทั้งหมด
 app.get('/api/documents', authenticateToken, isAdmin, async (req, res) => {
     try {
-        // ค้นหาและเรียงลำดับ ให้ไฟล์ใหม่สุดขึ้นก่อน
         const documents = await Document.find().sort({ uploadedAt: -1 });
         res.json(documents);
     } catch (error) {
@@ -641,26 +636,19 @@ app.delete('/api/documents/:id', authenticateToken, isAdmin, async (req, res) =>
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID เอกสารไม่ถูกต้อง' }); }
 
-        // 1. ค้นหาข้อมูลเอกสารใน DB ก่อน
         const document = await Document.findById(id);
         if (!document) {
             return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
         }
 
-        // 2. สร้าง path ที่อยู่ของไฟล์จริง
-        // (เราใช้ documentUploadDir ที่ประกาศไว้ด้านบน)
         const filePath = path.join(documentUploadDir, document.storedFilename);
 
-        // 3. สั่งลบไฟล์จริงออกจากเซิร์ฟเวอร์ (Filesystem)
         fs.unlink(filePath, async (err) => {
             if (err) {
-                // ถ้าหาไฟล์ไม่เจอ ก็แค่ log เตือนไว้ แต่ยังลบใน DB ต่อ
                 console.warn(`ไม่สามารถลบไฟล์ได้ (อาจถูกลบไปแล้ว): ${filePath}`, err.message);
             }
 
-            // 4. ลบข้อมูลออกจากฐานข้อมูล (MongoDB)
             await Document.findByIdAndDelete(id);
-
             res.json({ status: 'success', message: 'ลบเอกสารเรียบร้อยแล้ว' });
         });
 
