@@ -25,7 +25,7 @@ const corsOptions = {
     // ใส่ URL ของ Frontend ที่คุณใช้ทดสอบ (localhost)
     // และ URL ของ Frontend ที่คุณจะใช้จริง (เช่น Vercel, Netlify)
     origin: [
-        'http://localhost:5173', // ⬅️ ⭐️⭐️ [เพิ่ม] อนุญาต React (Vite) ของเรา ⭐️⭐️
+        'http://localhost:5173', // ⬅️ ⭐️⭐️ [เพิ่ม] อนุญาต React (Vite) ของเรา ⭐️⭐️
         'http://localhost:3000', // ⬅️ (อันเดิม)
         'http://localhost:3001', // ⬅️ (อันเดิม)
         'https://sut-park-a.vercel.app' // ⬅️ (อันเดิม)
@@ -128,7 +128,7 @@ const activitySchema = new mongoose.Schema({
 });
 const Activity = mongoose.model('Activity', activitySchema);
 
-// (Document Schema)
+// ⭐️ (แก้ไข) ⭐️ (Document Schema)
 const documentSchema = new mongoose.Schema({
     originalFilename: { 
         type: String, 
@@ -146,6 +146,12 @@ const documentSchema = new mongoose.Schema({
     description: { 
         type: String, 
         required: false 
+    },
+    // ⭐️ [ที่เพิ่ม] ⭐️ เพิ่มช่องสำหรับหมวดหมู่
+    category: { 
+        type: String, 
+        required: false, 
+        default: 'ทั่วไป' // ⭐️ ค่าเริ่มต้น
     },
     uploadedAt: { 
         type: Date, 
@@ -273,11 +279,11 @@ app.post('/api/bookings', authenticateToken, isAdmin, async (req, res) => {
 
 // ⭐️ [เพิ่ม] ⭐️ Endpoint สำหรับทดสอบ (Health Check)
 app.get('/api/test', (req, res) => {
-    res.json({ 
-        status: 'success', 
-        message: 'SUT Park Backend is running correctly!',
-        timestamp: new Date().toISOString() 
-    });
+    res.json({ 
+        status: 'success', 
+        message: 'SUT Park Backend is running correctly!',
+        timestamp: new Date().toISOString() 
+    });
 });
 
 app.get('/public/news', async (req, res) => {
@@ -444,23 +450,23 @@ app.put('/api/news/:id', authenticateToken, isAdmin, upload.single('imageUrl'), 
         const { title, category, content } = req.body;
         if (!title || !content) { return res.status(400).json({ message: 'กรุณากรอกหัวข้อและเนื้อหา' }); }
 
-        // ⭐️ [เพิ่ม] ⭐️ ค้นหาข้อมูลเก่าก่อนอัปเดต เพื่อดูว่ามีรูปเก่าหรือไม่
-        const oldNews = await News.findById(id);
+        // ⭐️ [เพิ่ม] ⭐️ ค้นหาข้อมูลเก่าก่อนอัปเดต เพื่อดูว่ามีรูปเก่าหรือไม่
+        const oldNews = await News.findById(id);
 
         const updateData = { title, category: category || 'ทั่วไป', content };
         
-        if (req.file) { 
-            updateData.imageUrl = `/uploads/${req.file.filename}`; 
-            
-            // ⭐️ [เพิ่ม] ⭐️ ถ้ามีไฟล์ใหม่ และมีรูปเก่า ให้ลบรูปเก่าทิ้ง
-            if (oldNews && oldNews.imageUrl) {
-                const oldImagePath = path.join(__dirname, oldNews.imageUrl.substring(1)); // ลบ '/' ข้างหน้าออก
-                fs.unlink(oldImagePath, (err) => {
-                    if (err) console.error(`ไม่สามารถลบไฟล์เก่าได้: ${oldImagePath}`, err.message);
-                    else console.log(`ลบไฟล์เก่าสำเร็จ: ${oldImagePath}`);
-                });
-            }
-        }
+        if (req.file) { 
+            updateData.imageUrl = `/uploads/${req.file.filename}`; 
+            
+            // ⭐️ [เพิ่ม] ⭐️ ถ้ามีไฟล์ใหม่ และมีรูปเก่า ให้ลบรูปเก่าทิ้ง
+            if (oldNews && oldNews.imageUrl) {
+                const oldImagePath = path.join(__dirname, oldNews.imageUrl.substring(1)); // ลบ '/' ข้างหน้าออก
+                fs.unlink(oldImagePath, (err) => {
+                    if (err) console.error(`ไม่สามารถลบไฟล์เก่าได้: ${oldImagePath}`, err.message);
+                    else console.log(`ลบไฟล์เก่าสำเร็จ: ${oldImagePath}`);
+                });
+            }
+        }
 
         const updatedNews = await News.findByIdAndUpdate( id, updateData, { new: true } );
         if (!updatedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
@@ -478,22 +484,22 @@ app.put('/api/activities/:id', authenticateToken, isAdmin, upload.single('imageU
         let { imageUrl: existingImageUrlFromForm } = req.body; 
         if (!title || !date || !content) { return res.status(400).json({ message: 'กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน' }); }
 
-        // ⭐️ [เพิ่ม] ⭐️ ค้นหาข้อมูลเก่าก่อน
-        const oldActivity = await Activity.findById(id);
+        // ⭐️ [เพิ่ม] ⭐️ ค้นหาข้อมูลเก่าก่อน
+        const oldActivity = await Activity.findById(id);
 
         const updateData = { title, date: new Date(date), content };
 
         if (req.file) { 
-            updateData.imageUrl = `/uploads/${req.file.filename}`;
-            // ⭐️ [เพิ่ม] ⭐️ ถ้ามีไฟล์ใหม่ และมีรูปเก่า ให้ลบรูปเก่าทิ้ง
-            if (oldActivity && oldActivity.imageUrl) {
-                const oldImagePath = path.join(__dirname, oldActivity.imageUrl.substring(1));
-                fs.unlink(oldImagePath, (err) => {
-                    if (err) console.error(`ไม่สามารถลบไฟล์เก่าได้: ${oldImagePath}`, err.message);
-                    else console.log(`ลบไฟล์เก่าสำเร็จ: ${oldImagePath}`);
-                });
-            }
-        } 
+            updateData.imageUrl = `/uploads/${req.file.filename}`;
+            // ⭐️ [เพิ่ม] ⭐️ ถ้ามีไฟล์ใหม่ และมีรูปเก่า ให้ลบรูปเก่าทิ้ง
+            if (oldActivity && oldActivity.imageUrl) {
+                const oldImagePath = path.join(__dirname, oldActivity.imageUrl.substring(1));
+                fs.unlink(oldImagePath, (err) => {
+                    if (err) console.error(`ไม่สามารถลบไฟล์เก่าได้: ${oldImagePath}`, err.message);
+                    else console.log(`ลบไฟล์เก่าสำเร็จ: ${oldImagePath}`);
+                });
+            }
+        } 
         else if (existingImageUrlFromForm === '') { updateData.imageUrl = ''; } 
         else if (existingImageUrlFromForm) { updateData.imageUrl = existingImageUrlFromForm; }
 
@@ -588,17 +594,17 @@ app.delete('/api/news/:id', authenticateToken, isAdmin, async (req, res) => {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
         
-        const deletedNews = await News.findByIdAndDelete(id);
+        const deletedNews = await News.findByIdAndDelete(id);
         if (!deletedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
 
-        // ⭐️ [เพิ่ม] ⭐️ ลบไฟล์รูปภาพที่เกี่ยวข้อง
-        if (deletedNews.imageUrl) {
-            const imagePath = path.join(__dirname, deletedNews.imageUrl.substring(1));
-            fs.unlink(imagePath, (err) => {
-                if (err) console.error(`ไม่สามารถลบไฟล์ข่าวได้: ${imagePath}`, err.message);
-                else console.log(`ลบไฟล์ข่าวสำเร็จ: ${imagePath}`);
-            });
-        }
+        // ⭐️ [เพิ่ม] ⭐️ ลบไฟล์รูปภาพที่เกี่ยวข้อง
+        if (deletedNews.imageUrl) {
+            const imagePath = path.join(__dirname, deletedNews.imageUrl.substring(1));
+            fs.unlink(imagePath, (err) => {
+                if (err) console.error(`ไม่สามารถลบไฟล์ข่าวได้: ${imagePath}`, err.message);
+                else console.log(`ลบไฟล์ข่าวสำเร็จ: ${imagePath}`);
+            });
+        }
 
         res.json({ status: 'success', message: 'ลบข่าวสำเร็จ' });
     } catch (error) {
@@ -611,17 +617,17 @@ app.delete('/api/activities/:id', authenticateToken, isAdmin, async (req, res) =
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID กิจกรรมไม่ถูกต้อง' }); }
         
-        const deletedActivity = await Activity.findByIdAndDelete(id);
+        const deletedActivity = await Activity.findByIdAndDelete(id);
         if (!deletedActivity) { return res.status(404).json({ message: 'ไม่พบกิจกรรมนี้' }); }
 
-        // ⭐️ [เพิ่ม] ⭐️ ลบไฟล์รูปภาพที่เกี่ยวข้อง
-        if (deletedActivity.imageUrl) {
-            const imagePath = path.join(__dirname, deletedActivity.imageUrl.substring(1));
-            fs.unlink(imagePath, (err) => {
-                if (err) console.error(`ไม่สามารถลบไฟล์กิจกรรมได้: ${imagePath}`, err.message);
-                else console.log(`ลบไฟล์กิจกรรมสำเร็จ: ${imagePath}`);
-            });
-        }
+        // ⭐️ [เพิ่ม] ⭐️ ลบไฟล์รูปภาพที่เกี่ยวข้อง
+        if (deletedActivity.imageUrl) {
+            const imagePath = path.join(__dirname, deletedActivity.imageUrl.substring(1));
+            fs.unlink(imagePath, (err) => {
+                if (err) console.error(`ไม่สามารถลบไฟล์กิจกรรมได้: ${imagePath}`, err.message);
+                else console.log(`ลบไฟล์กิจกรรมสำเร็จ: ${imagePath}`);
+            });
+        }
 
         res.json({ status: 'success', message: 'ลบกิจกรรมสำเร็จ' });
     } catch (error) {
@@ -656,13 +662,16 @@ app.delete('/api/contacts/:id', authenticateToken, isAdmin, async (req, res) => 
 
 
 // ⭐️ [ใหม่] ⭐️ --- 12.5. API Endpoints (ระบบจัดการเอกสาร) ---
+
+// ⭐️ (แก้ไข) ⭐️ Endpoint อัปโหลด
 app.post('/api/documents/upload', authenticateToken, isAdmin, documentUpload.single('documentFile'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'ไม่มีไฟล์ถูกอัปโหลด' });
         }
         
-        const { description } = req.body;
+        // ⭐️ (แก้ไข) ⭐️ ดึง category มาจาก req.body
+        const { description, category } = req.body;
         const { originalname, filename } = req.file;
 
         const fileUrlPath = `/uploads/documents/${filename}`;
@@ -671,7 +680,8 @@ app.post('/api/documents/upload', authenticateToken, isAdmin, documentUpload.sin
             originalFilename: Buffer.from(originalname, 'latin1').toString('utf8'), 
             storedFilename: filename,
             path: fileUrlPath, 
-            description: description || 'ไม่มีคำอธิบาย'
+            description: description || 'ไม่มีคำอธิบาย',
+            category: category || 'ทั่วไป' // ⭐️ (เพิ่ม) ⭐️ บันทึก category
         });
 
         await newDocument.save();
@@ -728,38 +738,38 @@ app.delete('/api/documents/:id', authenticateToken, isAdmin, async (req, res) =>
 
 // ⭐️ [ใหม่] ⭐️ GET: ดาวน์โหลดเอกสาร
 app.get('/api/documents/:id/download', authenticateToken, isAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID เอกสารไม่ถูกต้อง' }); }
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID เอกสารไม่ถูกต้อง' }); }
 
-        const document = await Document.findById(id);
-        if (!document) {
-            return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
-        }
+        const document = await Document.findById(id);
+        if (!document) {
+            return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
+        }
 
-        // ⭐️ ใช้ document.path ซึ่งเก็บ /uploads/documents/filename.xyz
-        const filePath = path.join(__dirname, document.path.substring(1)); 
+        // ⭐️ ใช้ document.path ซึ่งเก็บ /uploads/documents/filename.xyz
+        const filePath = path.join(__dirname, document.path.substring(1)); 
 
-        // ⭐️ ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่ ก่อนส่ง
-        if (fs.existsSync(filePath)) {
-            // ⭐️ ใช้ res.download() จะตั้งค่า Content-Disposition ให้เอง
-            // พารามิเตอร์ที่สองคือชื่อไฟล์ที่ผู้ใช้จะเห็นตอนดาวน์โหลด
-            res.download(filePath, document.originalFilename, (err) => {
-                if (err) {
-                    console.error('เกิดข้อผิดพลาดระหว่างส่งไฟล์ดาวน์โหลด:', err.message);
-                    if (!res.headersSent) {
-                        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์' });
-                    }
-                }
-            });
-        } else {
-            console.warn(`ไม่พบไฟล์บนเซิร์ฟเวอร์: ${filePath}`);
-            return res.status(404).json({ message: 'ไม่พบไฟล์บนเซิร์ฟเวอร์ (อาจถูกลบไปแล้ว)' });
-        }
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
+        // ⭐️ ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่ ก่อนส่ง
+        if (fs.existsSync(filePath)) {
+            // ⭐️ ใช้ res.download() จะตั้งค่า Content-Disposition ให้เอง
+            // พารามิเตอร์ที่สองคือชื่อไฟล์ที่ผู้ใช้จะเห็นตอนดาวน์โหลด
+            res.download(filePath, document.originalFilename, (err) => {
+                if (err) {
+                    console.error('เกิดข้อผิดพลาดระหว่างส่งไฟล์ดาวน์โหลด:', err.message);
+                    if (!res.headersSent) {
+                        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์' });
+                    }
+                }
+            });
+        } else {
+            console.warn(`ไม่พบไฟล์บนเซิร์ฟเวอร์: ${filePath}`);
+            return res.status(404).json({ message: 'ไม่พบไฟล์บนเซิร์ฟเวอร์ (อาจถูกลบไปแล้ว)' });
+        }
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 // ----------------------------------------------------
 
