@@ -1,1 +1,9 @@
 "node_modules/" 
+# โฟลเดอร์ที่เก็บ Dependencies (ห้าม Push)
+/node_modules
+
+# โฟลเดอร์ที่เก็บไฟล์อัปโหลด (ห้าม Push)
+/uploads
+
+# ไฟล์เก็บความลับ (ห้าม Push)
+.env
