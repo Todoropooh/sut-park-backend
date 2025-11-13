@@ -5,6 +5,7 @@ const News = require('../models/newsModel');
 const Booking = require('../models/bookingModel');
 const User = require('../models/userModel');
 const Activity = require('../models/activityModel');
+const mongoose = require('mongoose');
 
 // (ย้ายมาจาก GET /api/dashboard-stats)
 exports.getDashboardStats = async (req, res) => {
