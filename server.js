@@ -6,15 +6,15 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path'); 
 
-// ⭐️ (นำเข้า Middleware)
 const { authenticateToken, isAdmin } = require('./middleware/authMiddleware');
 
-// ⭐️ (นำเข้า Controllers สำหรับ Public Routes)
+// ⭐️ (นำเข้า Controllers - เพิ่ม serviceItemController)
 const newsController = require('./controllers/newsController');
 const activityController = require('./controllers/activityController');
 const bookingController = require('./controllers/bookingController');
 const contactController = require('./controllers/contactController');
-const mainController = require('./controllers/mainController'); 
+const mainController = require('./controllers/mainController');
+const serviceItemController = require('./controllers/serviceItemController'); // ⭐️ (เพิ่ม)
 
 // ⭐️ (นำเข้า Admin Routes)
 const newsRoutes = require('./routes/newsRoutes');
@@ -24,8 +24,6 @@ const contactRoutes = require('./routes/contactRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
-
-// ⭐️ (เพิ่ม) 1. นำเข้า Route ใหม่ของเรา
 const serviceItemRoutes = require('./routes/serviceItemRoutes');
 
 // --- 2. Config ---
@@ -35,13 +33,14 @@ const app = express();
 const port = process.env.PORT || 3000; 
 
 // --- 3. Middlewares ---
+
+// ⭐️⭐️ (สำคัญ) 1. อัปเดต CORS ⭐️⭐️
 const corsOptions = {
     origin: [
-        'http://localhost:5173', 
-        null,
-        'http://localhost:3000',
-        'http://localhost:3001', 
-        'https://sut-park-a.vercel.app' 
+        'http://localhost:5173', // (Admin Panel)
+        'https://sut-park-a.vercel.app', // (Admin Panel - Production)
+        null, // (สำหรับเทส HTML local)
+        'https://your-public-website.com' // ⬅️⭐️⭐️ (สำคัญมาก!) ใส่ URL ของ "เว็บสาธารณะ" ของคุณที่นี่
     ],
     methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS', 
     allowedHeaders: 'Content-Type,Authorization' 
@@ -59,6 +58,10 @@ app.get('/public/news', newsController.getPublicNews);
 app.get('/public/activities', activityController.getPublicActivities);
 app.get('/public/bookings', bookingController.getPublicBookings);
 
+// ⭐️⭐️ (สำคัญ) 2. เพิ่ม Route ใหม่สำหรับ Public ⭐️⭐️
+app.get('/public/services', serviceItemController.getPublicServiceItems);
+
+
 // --- 5. API Routes (Admin - Protected) ---
 app.use('/api/dashboard', authenticateToken, isAdmin, dashboardRoutes);
 app.use('/api/news', authenticateToken, isAdmin, newsRoutes);
@@ -67,9 +70,7 @@ app.use('/api/bookings', authenticateToken, isAdmin, bookingRoutes);
 app.use('/api/contacts', authenticateToken, isAdmin, contactRoutes);
 app.use('/api/documents', authenticateToken, isAdmin, documentRoutes);
 app.use('/api/users', authenticateToken, isAdmin, userRoutes);
-
-// ⭐️ (เพิ่ม) 2. ลงทะเบียน Route ใหม่ (เราจะตั้งชื่อ Path ว่า '/api/services')
-app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes);
+app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes); // (Admin Route ยังอยู่)
 
 
 // --- 6. Database Connection and Server Start ---
