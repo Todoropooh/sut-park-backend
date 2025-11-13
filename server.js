@@ -10,12 +10,11 @@ const path = require('path');
 const { authenticateToken, isAdmin } = require('./middleware/authMiddleware');
 
 // ⭐️ (นำเข้า Controllers สำหรับ Public Routes)
-// (เราต้องการ Controller บางตัวสำหรับ Public Routes)
 const newsController = require('./controllers/newsController');
 const activityController = require('./controllers/activityController');
 const bookingController = require('./controllers/bookingController');
 const contactController = require('./controllers/contactController');
-const mainController = require('./controllers/mainController'); // (สำหรับ Login, /api/test)
+const mainController = require('./controllers/mainController'); 
 
 // ⭐️ (นำเข้า Admin Routes)
 const newsRoutes = require('./routes/newsRoutes');
@@ -25,6 +24,9 @@ const contactRoutes = require('./routes/contactRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+
+// ⭐️ (เพิ่ม) 1. นำเข้า Route ใหม่ของเรา
+const serviceItemRoutes = require('./routes/serviceItemRoutes');
 
 // --- 2. Config ---
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux2ke37SFIjaXW5@sutpark.h7aiwyt.mongodb.net/sut_park_db?appName=sutpark";
@@ -45,10 +47,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json()); 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // ⭐️ ให้บริการไฟล์ Static
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 
 // --- 4. API Routes (Public) ---
-// (Routes ที่คนทั่วไปเรียกได้ ไม่ต้องล็อกอิน)
 app.get('/api/test', mainController.getApiTest);
 app.post('/api/login', mainController.loginUser);
 app.post('/submit-form', contactController.createPublicContact); 
@@ -58,8 +59,6 @@ app.get('/public/activities', activityController.getPublicActivities);
 app.get('/public/bookings', bookingController.getPublicBookings);
 
 // --- 5. API Routes (Admin - Protected) ---
-// (Routes ที่ต้องใช้ Token (authenticateToken) และต้องเป็น Admin (isAdmin))
-// ⭐️ เราใช้ "ยาม" เฝ้ากลุ่มของ Routes ทั้งหมดในบรรทัดเดียว ⭐️
 app.use('/api/dashboard', authenticateToken, isAdmin, dashboardRoutes);
 app.use('/api/news', authenticateToken, isAdmin, newsRoutes);
 app.use('/api/activities', authenticateToken, isAdmin, activityRoutes);
@@ -67,6 +66,9 @@ app.use('/api/bookings', authenticateToken, isAdmin, bookingRoutes);
 app.use('/api/contacts', authenticateToken, isAdmin, contactRoutes);
 app.use('/api/documents', authenticateToken, isAdmin, documentRoutes);
 app.use('/api/users', authenticateToken, isAdmin, userRoutes);
+
+// ⭐️ (เพิ่ม) 2. ลงทะเบียน Route ใหม่ (เราจะตั้งชื่อ Path ว่า '/api/services')
+app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes);
 
 
 // --- 6. Database Connection and Server Start ---
