@@ -7,7 +7,8 @@ const serviceItemSchema = new mongoose.Schema({
   fundingAmount: { type: Number, default: 0 },
   targetAudience: { type: [String], default: [] },
   deadline: { type: Date },
-  imageUrl: { type: String, default: "" },
+  imageUrl: { type: String },
 }, { timestamps: true });
 
-export default mongoose.model("ServiceItem", serviceItemSchema);
+const ServiceItem = mongoose.model("ServiceItem", serviceItemSchema);
+export default ServiceItem;

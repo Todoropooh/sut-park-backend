@@ -1,8 +1,8 @@
 {
   "name": "sut-park-backend",
   "version": "1.0.0",
-  "description": "Backend for SUT Park Admin Panel",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
