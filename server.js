@@ -1,4 +1,4 @@
-// server.js (ฉบับ Refactor - Final Fix)
+// server.js (ฉบับ Refactor - Final Fix + CORS Enhanced)
 
 // --- 1. Imports ---
 const express = require('express');
@@ -29,19 +29,36 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux
 const JWT_SECRET = process.env.JWT_SECRET || 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!'; 
 const app = express();
 const port = process.env.PORT || 3000; 
-const host = '0.0.0.0'; // ⭐️ (เพิ่ม) บังคับ Host
+const host = '0.0.0.0';
 
 // --- 3. Middlewares ---
-const corsOptions = {
-    origin: [
-        'http://localhost:5173', 
-        'https://sut-park-a.vercel.app', 
-        null, 
-    ],
-    methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS', 
-    allowedHeaders: 'Content-Type,Authorization' 
-};
-app.use(cors(corsOptions));
+// ⭐️ เพิ่ม CORS แบบกำหนดเอง (รองรับ origin null)
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    
+    // อนุญาต origin ที่กำหนด
+    const allowedOrigins = [
+        'http://localhost:5173',
+        'https://sut-park-a.vercel.app',
+    ];
+    
+    if (allowedOrigins.includes(origin) || !origin) {
+        // อนุญาต origin ที่อยู่ใน list หรือไม่มี origin (null)
+        res.header('Access-Control-Allow-Origin', origin || '*');
+    }
+    
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    // จัดการ preflight request
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    
+    next();
+});
+
 app.use(express.json()); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 
@@ -70,15 +87,14 @@ app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes);
 // --- 6. Database Connection and Server Start ---
 console.log("กำลังพยายามเชื่อมต่อ MongoDB Atlas...");
 mongoose.connect(MONGO_URI)
-    .then(() => {
-        console.log("✅ เชื่อมต่อ MongoDB Atlas สำเร็จ!");
-        
-        // ⭐️ (แก้ไข) เพิ่ม 'host' เข้าไป
-        app.listen(port, host, () => {
-            console.log(`✅ เซิร์ฟเวอร์ API พร้อมทำงานที่ http://${host}:${port}`);
-        });
-    })
-    .catch((error) => {
-        console.error("❌ เกิดข้อผิดพลาดร้ายแรงในการเชื่อมต่อ MongoDB:", error.message);
-        console.log("เซิร์ฟเวอร์ไม่ได้เริ่มทำงาน กรุณาตรวจสอบ MONGO_URI, IP Whitelist, และการเชื่อมต่ออินเทอร์เน็ต");
-    });
+    .then(() => {
+        console.log("✅ เชื่อมต่อ MongoDB Atlas สำเร็จ!");
+        
+        app.listen(port, host, () => {
+            console.log(`✅ เซิร์ฟเวอร์ API พร้อมทำงานที่ http://${host}:${port}`);
+        });
+    })
+    .catch((error) => {
+        console.error("❌ เกิดข้อผิดพลาดร้ายแรงในการเชื่อมต่อ MongoDB:", error.message);
+        console.log("เซิร์ฟเวอร์ไม่ได้เริ่มทำงาน กรุณาตรวจสอบ MONGO_URI, IP Whitelist, และการเชื่อมต่ออินเทอร์เน็ต");
+    });
