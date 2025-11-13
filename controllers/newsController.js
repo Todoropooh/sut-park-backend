@@ -1,13 +1,24 @@
 // controllers/newsController.js
 
-const News = require('../models/newsModel'); // (เราจะสร้างไฟล์นี้)
+const News = require('../models/newsModel');
+const SiteStat = require('../models/siteStatModel'); // 1. ⭐️ (เพิ่ม) นำเข้า Model ใหม่
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 
-// (ย้ายมาจาก GET /public/news)
+// 2. ⭐️ (แก้ไข) เพิ่ม Logic การนับ
 exports.getPublicNews = async (req, res) => {
     try {
+        // ⭐️ (เพิ่ม) Logic การนับยอด (ทำงานเบื้องหลัง ไม่ต้องรอ)
+        // (upsert: true = ถ้าไม่มี 'totalPageViews' ให้สร้างใหม่)
+        // ($inc: { count: 1 } = บวก 1)
+        SiteStat.findOneAndUpdate(
+            { name: 'totalPageViews' },
+            { $inc: { count: 1 } },
+            { upsert: true, new: true }
+        ).exec(); // ⭐️ .exec() คือสั่งให้ทำงานเลย (fire-and-forget)
+
+        // (Logic เดิม - ทำงานต่อไป)
         const news = await News.find({}).sort({ publishedAt: -1 });
         res.json(news);
     } catch (error) {
@@ -15,7 +26,8 @@ exports.getPublicNews = async (req, res) => {
     }
 };
 
-// (ย้ายมาจาก GET /api/news)
+// (ฟังก์ชันอื่นๆ (getAllNews, getNewsById, ฯลฯ) ... เหมือนเดิมเป๊ะๆ)
+
 exports.getAllNews = async (req, res) => {
     try {
         const news = await News.find({}).sort({ publishedAt: -1 });
@@ -25,7 +37,6 @@ exports.getAllNews = async (req, res) => {
     }
 };
 
-// (ย้ายมาจาก GET /api/news/:id)
 exports.getNewsById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -38,7 +49,6 @@ exports.getNewsById = async (req, res) => {
     }
 };
 
-// (ย้ายมาจาก POST /api/add-news)
 exports.createNews = async (req, res) => {
     const { title, category, content } = req.body;
     const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
@@ -53,7 +63,6 @@ exports.createNews = async (req, res) => {
     }
 };
 
-// (ย้ายมาจาก PUT /api/news/:id)
 exports.updateNews = async (req, res) => {
     try {
         const { id } = req.params;
@@ -66,7 +75,6 @@ exports.updateNews = async (req, res) => {
         if (req.file) { 
             updateData.imageUrl = `/uploads/${req.file.filename}`; 
             if (oldNews && oldNews.imageUrl) {
-                // ⭐️ (สำคัญ) แก้ Path ให้ออกไป 1 ชั้น (../)
                 const oldImagePath = path.join(__dirname, '../', oldNews.imageUrl.substring(1)); 
                 fs.unlink(oldImagePath, (err) => {
                     if (err) console.error(`ไม่สามารถลบไฟล์เก่าได้: ${oldImagePath}`, err.message);
@@ -83,7 +91,6 @@ exports.updateNews = async (req, res) => {
     }
 };
 
-// (ย้ายมาจาก DELETE /api/news/:id)
 exports.deleteNews = async (req, res) => {
     try {
         const { id } = req.params;
@@ -93,7 +100,6 @@ exports.deleteNews = async (req, res) => {
         if (!deletedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
 
         if (deletedNews.imageUrl) {
-            // ⭐️ (สำคัญ) แก้ Path
             const imagePath = path.join(__dirname, '../', deletedNews.imageUrl.substring(1));
             fs.unlink(imagePath, (err) => {
                 if (err) console.error(`ไม่สามารถลบไฟล์ข่าวได้: ${imagePath}`, err.message);
