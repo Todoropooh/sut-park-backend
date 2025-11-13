@@ -1,21 +1,21 @@
-// routes/serviceItemRoutes.js
+import express from "express";
+import multer from "multer";
+import { 
+  createServiceItem,
+  updateServiceItem,
+  deleteServiceItem
+} from "../controllers/serviceItemController.js";
 
-const express = require('express');
 const router = express.Router();
+const upload = multer({ dest: "uploads/" }); // โฟลเดอร์ชั่วคราว
 
-// 1. นำเข้า "ตัวอัปโหลด" (เราจะใช้ตัวเดียวกับ News/Activities)
-const { upload } = require('../middleware/uploadMiddleware');
+// POST เพิ่มรายการ + อัปโหลดรูป
+router.post("/", upload.single("imageUrl"), createServiceItem);
 
-// 2. นำเข้า "สมอง"
-const serviceItemController = require('../controllers/serviceItemController');
+// PUT แก้ไขรายการ + อัปโหลดรูป
+router.put("/:id", upload.single("imageUrl"), updateServiceItem);
 
-// 3. กำหนดเส้นทาง (ยาม 'authenticateToken' จะถูกเรียกใน server.js)
-// (Path '/' ที่นี่ หมายถึง '/api/services')
+// DELETE ลบรายการ
+router.delete("/:id", deleteServiceItem);
 
-router.get('/', serviceItemController.getAllServiceItems);
-router.get('/:id', serviceItemController.getServiceItemById);
-router.post('/', upload.single('imageUrl'), serviceItemController.createServiceItem);
-router.put('/:id', upload.single('imageUrl'), serviceItemController.updateServiceItem);
-router.delete('/:id', serviceItemController.deleteServiceItem);
-
-module.exports = router;
+export default router;

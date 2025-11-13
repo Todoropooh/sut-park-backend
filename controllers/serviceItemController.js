@@ -1,125 +1,88 @@
-// controllers/serviceItemController.js
+import ServiceItem from "../models/ServiceItem.js";
+import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
 
-const ServiceItem = require('../models/serviceItemModel');
-const fs = require('fs');
-const path = require('path');
-const mongoose = require('mongoose'); // ⭐️ (สำคัญ: ต้องมี Mongoose)
+// สร้าง Service Item
+export const createServiceItem = async (req, res) => {
+  try {
+    const { title, description, category, fundingAmount, targetAudience, deadline } = req.body;
+    let imageUrl = "";
 
-// ⭐️ (GET All - Admin)
-exports.getAllServiceItems = async (req, res) => {
-    try {
-        const items = await ServiceItem.find({}).sort({ createdAt: -1 });
-        res.json(items);
-    } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
-};
-
-// ⭐️ (GET Public)
-exports.getPublicServiceItems = async (req, res) => {
-    try {
-        const items = await ServiceItem.find({}).sort({ createdAt: -1 });
-        res.json(items);
-    } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
-};
-
-// ⭐️ (GET By ID - Admin)
-exports.getServiceItemById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ไม่ถูกต้อง' }); }
-        const item = await ServiceItem.findById(id);
-        if (!item) { return res.status(404).json({ message: 'ไม่พบรายการนี้' }); }
-        res.json(item);
-    } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
-};
-
-// ⭐️ (POST - Create - Admin)
-exports.createServiceItem = async (req, res) => {
-    const { title, description, category, fundingAmount, targetAudience, deadline } = req.body;
-    const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
-    
-    if (!title || !description || !category) { 
-        return res.status(400).json({ message: 'กรุณากรอก หัวข้อ, หมวดหมู่, และรายละเอียด' }); 
+    // Upload รูปถ้ามี
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, { folder: "sut-park" });
+      imageUrl = result.secure_url;
+      fs.unlinkSync(req.file.path); // ลบไฟล์ temp
     }
-    
-    try {
-        const targetArray = targetAudience ? targetAudience.split(',').map(s => s.trim()) : [];
-        const newItem = new ServiceItem({ 
-            title, 
-            description, 
-            category, 
-            fundingAmount: Number(fundingAmount) || 0,
-            targetAudience: targetArray,
-            deadline: deadline ? new Date(deadline) : null,
-            imageUrl: imageUrlPath 
-        });
-        await newItem.save();
-        res.status(201).json({ status: 'success', message: `สร้าง "${title}" สำเร็จ` });
-    } catch (error) {
-        console.error('Error creating service item:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
-    }
+
+    const newItem = new ServiceItem({
+      title,
+      description,
+      category,
+      fundingAmount: fundingAmount || 0,
+      targetAudience: targetAudience ? targetAudience.split(",").map(t => t.trim()) : [],
+      deadline: deadline ? new Date(deadline) : null,
+      imageUrl,
+    });
+
+    await newItem.save();
+    res.status(201).json({ success: true, data: newItem });
+  } catch (err) {
+    console.error("Create ServiceItem error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-// ⭐️ (PUT - Update - Admin)
-exports.updateServiceItem = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { title, description, category, fundingAmount, targetAudience, deadline } = req.body;
-        
-        const oldItem = await ServiceItem.findById(id);
-        if (!oldItem) return res.status(404).json({ message: 'ไม่พบรายการนี้' });
+// แก้ไข Service Item
+export const updateServiceItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, category, fundingAmount, targetAudience, deadline } = req.body;
 
-        const targetArray = targetAudience ? targetAudience.split(',').map(s => s.trim()) : [];
-        
-        const updateData = { 
-            title, 
-            description, 
-            category, 
-            fundingAmount: Number(fundingAmount) || 0,
-            targetAudience: targetArray,
-            deadline: deadline ? new Date(deadline) : null,
-        };
-        
-        if (req.file) { 
-            updateData.imageUrl = `/uploads/${req.file.filename}`; 
-            if (oldItem && oldItem.imageUrl) {
-                const oldImagePath = path.join(__dirname, '../', oldItem.imageUrl.substring(1)); 
-                fs.unlink(oldImagePath, (err) => {
-                    if (err) console.error(`ไม่สามารถลบไฟล์เก่าได้: ${oldImagePath}`, err.message);
-                });
-            }
-        }
-        const updatedItem = await ServiceItem.findByIdAndUpdate( id, updateData, { new: true } );
-        res.json({ status: 'success', message: 'อัปเดตสำเร็จ', data: updatedItem });
-    } catch (error) {
-        console.error('Error updating service item:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
+    const item = await ServiceItem.findById(id);
+    if (!item) return res.status(404).json({ success: false, message: "ไม่พบรายการนี้" });
+
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, { folder: "sut-park" });
+      item.imageUrl = result.secure_url;
+      fs.unlinkSync(req.file.path);
+    }
+
+    item.title = title;
+    item.description = description;
+    item.category = category;
+    item.fundingAmount = fundingAmount || 0;
+    item.targetAudience = targetAudience ? targetAudience.split(",").map(t => t.trim()) : [];
+    item.deadline = deadline ? new Date(deadline) : null;
+
+    await item.save();
+    res.status(200).json({ success: true, data: item });
+  } catch (err) {
+    console.error("Update ServiceItem error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-// ⭐️ (DELETE - Admin)
-exports.deleteServiceItem = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ไม่ถูกต้อง' }); }
-        
-        const deletedItem = await ServiceItem.findByIdAndDelete(id);
-        if (!deletedItem) { return res.status(404).json({ message: 'ไม่พบรายการนี้' }); }
+// ดึง Service Item ทั้งหมด (Public)
+export const getPublicServiceItems = async (req, res) => {
+  try {
+    const items = await ServiceItem.find().sort({ createdAt: -1 });
+    res.json(items);
+  } catch (err) {
+    console.error("Get ServiceItems error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
-        if (deletedItem.imageUrl) {
-            const imagePath = path.join(__dirname, '../', deletedItem.imageUrl.substring(1));
-            fs.unlink(imagePath, (err) => {
-                if (err) console.error(`ไม่สามารถลบไฟล์ได้: ${imagePath}`, err.message);
-            });
-        }
-        res.json({ status: 'success', message: 'ลบสำเร็จ' });
-    } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
+// ลบ Service Item
+export const deleteServiceItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = await ServiceItem.findByIdAndDelete(id);
+    if (!item) return res.status(404).json({ success: false, message: "ไม่พบรายการนี้" });
+    res.json({ success: true, message: "ลบรายการสำเร็จ" });
+  } catch (err) {
+    console.error("Delete ServiceItem error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };

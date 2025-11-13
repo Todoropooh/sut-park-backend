@@ -26,8 +26,8 @@ import documentRoutes from "./routes/documentRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import serviceItemRoutes from "./routes/serviceItemRoutes.js";
-import uploadRoutes from "./routes/uploadRoutes.js"; // ✅ Upload
-import fileRoutes from "./routes/fileRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js"; // Cloudinary upload
+import fileRoutes from "./routes/fileRoutes.js"; // สำหรับไฟล์ทั่วไป
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
