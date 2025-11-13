@@ -2,7 +2,7 @@
 
 // --- 1. Imports ---
 const express = require('express');
-const cors = require('cors'); // ⭐️ (เราจะใช้ 'cors' โดยตรง)
+const cors = require('cors'); 
 const mongoose = require('mongoose');
 const path = require('path'); 
 
@@ -32,24 +32,17 @@ const port = process.env.PORT || 3000;
 const host = '0.0.0.0'; 
 
 // --- 3. Middlewares ---
-
-// ⭐️⭐️ (นี่คือจุดที่แก้ไข) ⭐️⭐️
-// (ลบ const corsOptions ออก)
-// (เราจะใช้ Global Middleware แค่นี้)
 app.use(express.json()); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 
-// ⭐️ (ใหม่) สร้าง Whitelist สำหรับ "Admin"
+// (Whitelist สำหรับ "Admin" - เหมือนเดิม)
 const adminWhitelist = [
   'http://localhost:5173', 
   'https://sut-park-a.vercel.app'
 ];
-
-// ⭐️ (ใหม่) สร้าง Config CORS สำหรับ "Admin" (แบบเข้มงวด)
 const adminCorsOptions = {
   origin: function (origin, callback) {
     if (adminWhitelist.indexOf(origin) !== -1 || !origin) {
-      // (อนุญาตถ้าอยู่ใน Whitelist หรือ !origin (เช่น Postman))
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -59,29 +52,29 @@ const adminCorsOptions = {
   allowedHeaders: 'Content-Type,Authorization' 
 };
 
-// ⭐️ (ใหม่) สร้าง Config CORS สำหรับ "Public" (แบบเปิด)
+// ⭐️⭐️ (นี่คือจุดที่แก้ไข) ⭐️⭐️
+// (Config CORS สำหรับ "Public")
 const publicCorsOptions = {
-  origin: '*', // ⬅️ (อนุญาต "ทุกคน" (Everyone) รวมถึง 'null')
-  methods: 'GET', // ⬅️ (อนุญาตแค่ GET)
+  origin: '*', // (อนุญาต "ทุกคน" (Everyone) รวมถึง 'null')
+  methods: 'GET,POST,OPTIONS', // ⬅️ (แก้ไข) เพิ่ม 'POST' และ 'OPTIONS'
 };
 
 
 // --- 4. API Routes (Public) ---
-// ⭐️ (สำคัญ) "หุ้ม" Routes สาธารณะ ด้วย 'cors(publicCorsOptions)'
+// (หุ้ม Routes สาธารณะ ด้วย 'cors(publicCorsOptions)')
 app.get('/api/test', cors(publicCorsOptions), mainController.getApiTest);
 app.get('/public/news', cors(publicCorsOptions), newsController.getPublicNews);
 app.get('/public/activities', cors(publicCorsOptions), activityController.getPublicActivities);
 app.get('/public/bookings', cors(publicCorsOptions), bookingController.getPublicBookings);
 app.get('/public/services', cors(publicCorsOptions), serviceItemController.getPublicServiceItems);
 
-// ⭐️ (สำหรับ Form Contact เราต้องอนุญาต POST)
+// (Routes ที่ใช้ POST)
 app.post('/submit-form', cors(publicCorsOptions), contactController.createPublicContact);
-app.post('/api/login', cors(publicCorsOptions), mainController.loginUser); // (Login ก็ต้อง Public)
+app.post('/api/login', cors(publicCorsOptions), mainController.loginUser); // ⬅️ (ตอนนี้จะอนุญาต POST แล้ว)
 
 
 // --- 5. API Routes (Admin - Protected) ---
-// ⭐️ (สำคัญ) "หุ้ม" Routes แอดมิน ด้วย 'cors(adminCorsOptions)'
-// (และ "ยาม" ของเรา)
+// (หุ้ม Routes แอดมิน ด้วย 'cors(adminCorsOptions)')
 app.use('/api/dashboard', cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
 app.use('/api/news', cors(adminCorsOptions), authenticateToken, isAdmin, newsRoutes);
 app.use('/api/activities', cors(adminCorsOptions), authenticateToken, isAdmin, activityRoutes);
