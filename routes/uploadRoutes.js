@@ -1,37 +1,40 @@
-// routes/uploadRoutes.js
 import express from "express";
 import multer from "multer";
+import fs from "fs";
 import cloudinary from "../config/cloudinary.js";
+import { File } from "../models/File.js"; // ✅ import model
 
 const router = express.Router();
+const upload = multer({ dest: "uploads/" }); // เก็บไฟล์ชั่วคราว
 
-// ใช้ memory storage แทน folder temp
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// POST /api/upload
 router.post("/", upload.single("image"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
-    }
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "sut-park",
+      upload_preset: "my_upload" // preset แบบ unsigned
+    });
 
-    // อัปโหลดไป Cloudinary
-    const result = await cloudinary.uploader.upload_stream(
-      { folder: "sut-park" },
-      (error, result) => {
-        if (error) {
-          console.error("Cloudinary upload error:", error);
-          return res.status(500).json({ success: false, message: error.message });
-        }
-        res.json({ success: true, url: result.secure_url });
-      }
-    );
+    // ลบไฟล์ temp หลังอัปโหลด
+    fs.unlinkSync(req.file.path);
 
-    result.end(req.file.buffer); // ส่ง buffer ของไฟล์ไป upload
+    // บันทึก URL ลง MongoDB
+    const newFile = new File({
+      filename: req.file.originalname,
+      url: result.secure_url
+    });
+    await newFile.save();
+
+    res.json({
+      success: true,
+      url: result.secure_url
+    });
   } catch (error) {
-    console.error("Upload failed:", error);
-    res.status(500).json({ success: false, message: "Upload failed", error: error.message });
+    console.error("❌ Upload failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Upload failed",
+      error: error.message
+    });
   }
 });
 

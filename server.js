@@ -1,10 +1,10 @@
 // server.js (Render-ready + Cloudinary upload)
 import dotenv from "dotenv";
 dotenv.config();
-
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import path from "path";
 
 // Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
@@ -27,6 +27,7 @@ import userRoutes from "./routes/userRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import serviceItemRoutes from "./routes/serviceItemRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js"; // ✅ Upload
+import fileRoutes from "./routes/fileRoutes.js";
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -38,6 +39,7 @@ const host = "0.0.0.0";
 
 // Middlewares
 app.use(express.json());
+app.use("/uploads", express.static(path.join("./uploads"))); // serve static files
 
 // CORS
 const adminWhitelist = [
@@ -71,6 +73,7 @@ app.post("/api/login", cors(publicCorsOptions), mainController.loginUser);
 
 // --- Upload Route ---
 app.use("/api/upload", cors(publicCorsOptions), uploadRoutes);
+app.use("/public/files", fileRoutes);
 
 // --- Admin Protected Routes ---
 app.use("/api/dashboard", cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
