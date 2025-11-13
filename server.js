@@ -1,20 +1,20 @@
-// server.js (ฉบับ Refactor - Final Fix + CORS Enhanced)
+// server.js (ฉบับ Refactor - Final CORS Fix)
 
 // --- 1. Imports ---
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // ⭐️ (เราจะใช้ 'cors' โดยตรง)
 const mongoose = require('mongoose');
 const path = require('path'); 
 
 const { authenticateToken, isAdmin } = require('./middleware/authMiddleware');
-
+// (Controllers - เหมือนเดิม)
 const newsController = require('./controllers/newsController');
 const activityController = require('./controllers/activityController');
 const bookingController = require('./controllers/bookingController');
 const contactController = require('./controllers/contactController');
 const mainController = require('./controllers/mainController');
 const serviceItemController = require('./controllers/serviceItemController'); 
-
+// (Routes - เหมือนเดิม)
 const newsRoutes = require('./routes/newsRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
@@ -29,72 +29,80 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux
 const JWT_SECRET = process.env.JWT_SECRET || 'SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!'; 
 const app = express();
 const port = process.env.PORT || 3000; 
-const host = '0.0.0.0';
+const host = '0.0.0.0'; 
 
 // --- 3. Middlewares ---
-// ⭐️ เพิ่ม CORS แบบกำหนดเอง (รองรับ origin null)
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    
-    // อนุญาต origin ที่กำหนด
-    const allowedOrigins = [
-        'http://localhost:5173',
-        'https://sut-park-a.vercel.app',
-    ];
-    
-    if (allowedOrigins.includes(origin) || !origin) {
-        // อนุญาต origin ที่อยู่ใน list หรือไม่มี origin (null)
-        res.header('Access-Control-Allow-Origin', origin || '*');
-    }
-    
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    // จัดการ preflight request
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    
-    next();
-});
 
+// ⭐️⭐️ (นี่คือจุดที่แก้ไข) ⭐️⭐️
+// (ลบ const corsOptions ออก)
+// (เราจะใช้ Global Middleware แค่นี้)
 app.use(express.json()); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 
-// --- 4. API Routes (Public) ---
-app.get('/api/test', mainController.getApiTest);
-app.post('/api/login', mainController.loginUser);
-app.post('/submit-form', contactController.createPublicContact); 
+// ⭐️ (ใหม่) สร้าง Whitelist สำหรับ "Admin"
+const adminWhitelist = [
+  'http://localhost:5173', 
+  'https://sut-park-a.vercel.app'
+];
 
-app.get('/public/news', newsController.getPublicNews);
-app.get('/public/activities', activityController.getPublicActivities);
-app.get('/public/bookings', bookingController.getPublicBookings);
-app.get('/public/services', serviceItemController.getPublicServiceItems); 
+// ⭐️ (ใหม่) สร้าง Config CORS สำหรับ "Admin" (แบบเข้มงวด)
+const adminCorsOptions = {
+  origin: function (origin, callback) {
+    if (adminWhitelist.indexOf(origin) !== -1 || !origin) {
+      // (อนุญาตถ้าอยู่ใน Whitelist หรือ !origin (เช่น Postman))
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS', 
+  allowedHeaders: 'Content-Type,Authorization' 
+};
+
+// ⭐️ (ใหม่) สร้าง Config CORS สำหรับ "Public" (แบบเปิด)
+const publicCorsOptions = {
+  origin: '*', // ⬅️ (อนุญาต "ทุกคน" (Everyone) รวมถึง 'null')
+  methods: 'GET', // ⬅️ (อนุญาตแค่ GET)
+};
+
+
+// --- 4. API Routes (Public) ---
+// ⭐️ (สำคัญ) "หุ้ม" Routes สาธารณะ ด้วย 'cors(publicCorsOptions)'
+app.get('/api/test', cors(publicCorsOptions), mainController.getApiTest);
+app.get('/public/news', cors(publicCorsOptions), newsController.getPublicNews);
+app.get('/public/activities', cors(publicCorsOptions), activityController.getPublicActivities);
+app.get('/public/bookings', cors(publicCorsOptions), bookingController.getPublicBookings);
+app.get('/public/services', cors(publicCorsOptions), serviceItemController.getPublicServiceItems);
+
+// ⭐️ (สำหรับ Form Contact เราต้องอนุญาต POST)
+app.post('/submit-form', cors(publicCorsOptions), contactController.createPublicContact);
+app.post('/api/login', cors(publicCorsOptions), mainController.loginUser); // (Login ก็ต้อง Public)
 
 
 // --- 5. API Routes (Admin - Protected) ---
-app.use('/api/dashboard', authenticateToken, isAdmin, dashboardRoutes);
-app.use('/api/news', authenticateToken, isAdmin, newsRoutes);
-app.use('/api/activities', authenticateToken, isAdmin, activityRoutes);
-app.use('/api/bookings', authenticateToken, isAdmin, bookingRoutes);
-app.use('/api/contacts', authenticateToken, isAdmin, contactRoutes);
-app.use('/api/documents', authenticateToken, isAdmin, documentRoutes);
-app.use('/api/users', authenticateToken, isAdmin, userRoutes);
-app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes); 
+// ⭐️ (สำคัญ) "หุ้ม" Routes แอดมิน ด้วย 'cors(adminCorsOptions)'
+// (และ "ยาม" ของเรา)
+app.use('/api/dashboard', cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
+app.use('/api/news', cors(adminCorsOptions), authenticateToken, isAdmin, newsRoutes);
+app.use('/api/activities', cors(adminCorsOptions), authenticateToken, isAdmin, activityRoutes);
+app.use('/api/bookings', cors(adminCorsOptions), authenticateToken, isAdmin, bookingRoutes);
+app.use('/api/contacts', cors(adminCorsOptions), authenticateToken, isAdmin, contactRoutes);
+app.use('/api/documents', cors(adminCorsOptions), authenticateToken, isAdmin, documentRoutes);
+app.use('/api/users', cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
+app.use('/api/services', cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes); 
 
 
 // --- 6. Database Connection and Server Start ---
 console.log("กำลังพยายามเชื่อมต่อ MongoDB Atlas...");
 mongoose.connect(MONGO_URI)
-    .then(() => {
-        console.log("✅ เชื่อมต่อ MongoDB Atlas สำเร็จ!");
-        
-        app.listen(port, host, () => {
-            console.log(`✅ เซิร์ฟเวอร์ API พร้อมทำงานที่ http://${host}:${port}`);
-        });
-    })
-    .catch((error) => {
-        console.error("❌ เกิดข้อผิดพลาดร้ายแรงในการเชื่อมต่อ MongoDB:", error.message);
-        console.log("เซิร์ฟเวอร์ไม่ได้เริ่มทำงาน กรุณาตรวจสอบ MONGO_URI, IP Whitelist, และการเชื่อมต่ออินเทอร์เน็ต");
-    });
+    .then(() => {
+        console.log("✅ เชื่อมต่อ MongoDB Atlas สำเร็จ!");
+        
+        app.listen(port, host, () => {
+            console.log(`✅ เซิร์ฟเวอร์ API พร้อมทำงานที่ http://${host}:${port}`);
+        });
+    })
+    .catch((error) => {
+        console.error("❌ เกิดข้อผิดพลาดร้ายแรงในการเชื่อมต่อ MongoDB:", error.message);
+        console.log("เซิร์ฟเวอร์ไม่ได้เริ่มทำงาน กรุณาตรวจสอบ MONGO_URI, IP Whitelist, และการเชื่อมต่ออินเทอร์เน็ต");
+    });
