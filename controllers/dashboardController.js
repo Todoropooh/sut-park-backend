@@ -1,11 +1,14 @@
 // controllers/dashboardController.js
 
+// ⭐️ (สำคัญ) ตรวจสอบว่า Import ครบ
 const News = require('../models/newsModel');
 const Booking = require('../models/bookingModel');
 const User = require('../models/userModel');
 const Activity = require('../models/activityModel');
-const SiteStat = require('../models/siteStatModel'); // ⭐️ (ต้องมี)
-const mongoose = require('mongoose'); // ⭐️ (ต้องมี)
+const SiteStat = require('../models/siteStatModel');
+const Document = require('../models/documentModel'); // ⭐️ (เพิ่ม)
+const ServiceItem = require('../models/serviceItemModel'); // ⭐️ (เพิ่ม)
+const mongoose = require('mongoose'); // ⭐️ (สำคัญมาก!)
 
 exports.getDashboardStats = async (req, res) => {
     console.log("กำลังดึงข้อมูล /api/dashboard/stats (ยืนยันสิทธิ์แล้ว)"); 
@@ -31,23 +34,23 @@ exports.getDashboardStats = async (req, res) => {
     }
 
     try {
-        // ⭐️ (Logic การดึงข้อมูลสถิติ - เหมือนเดิม)
+        // ⭐️ (แก้ไข) เพิ่มการนับ Document และ Service
         const [
             newsCount, 
             bookingCount, 
             userCount, 
             activityCount, 
             pageViewsStat,
-            documentsCount, // ⭐️ (เพิ่ม)
-            servicesCount  // ⭐️ (เพิ่ม)
+            documentsCount,
+            servicesCount
         ] = await Promise.all([
             News.countDocuments(), 
             Booking.countDocuments(), 
             User.countDocuments(), 
             Activity.countDocuments(),
             SiteStat.findOne({ name: 'totalPageViews' }),
-            mongoose.model('Document').countDocuments(), // ⭐️ (เพิ่ม)
-            mongoose.model('ServiceItem').countDocuments() // ⭐️ (เพิ่ม)
+            Document.countDocuments(),
+            ServiceItem.countDocuments()
         ]);
         
         // (Logic 'bookingAgg', 'newsAgg' ... เหมือนเดิม)
@@ -61,15 +64,15 @@ exports.getDashboardStats = async (req, res) => {
         ]);
         const newsChartData = { labels: newsAgg.map(item => item._id || 'ทั่วไป'), data: newsAgg.map(item => item.count) };
 
-        // ⭐️ (ส่ง JSON กลับไป)
+        // ⭐️ (แก้ไข) เพิ่ม 'documentsTotal' และ 'servicesTotal'
         res.json({
             newsTotal: newsCount, 
             bookingsTotal: bookingCount, 
             usersTotal: userCount, 
             activitiesTotal: activityCount, 
             pageViewsTotal: pageViewsStat ? pageViewsStat.count : 0, 
-            documentsTotal: documentsCount, // ⭐️ (เพิ่ม)
-            servicesTotal: servicesCount, // ⭐️ (เพิ่ม)
+            documentsTotal: documentsCount,
+            servicesTotal: servicesCount,
             bookingChartData: bookingChartData, 
             newsChartData: newsChartData
         });

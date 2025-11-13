@@ -3,24 +3,9 @@
 const ServiceItem = require('../models/serviceItemModel');
 const fs = require('fs');
 const path = require('path');
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // ⭐️ (สำคัญ: ต้องมี Mongoose)
 
-// ⭐️⭐️ (เพิ่มใหม่) 1. ฟังก์ชันสำหรับ Public (อ่านอย่างเดียว) ⭐️⭐️
-exports.getPublicServiceItems = async (req, res) => {
-    try {
-        // (เราอาจจะเลือก 'select' เฉพาะบาง field ที่อยากโชว์ก็ได้)
-        const items = await ServiceItem.find({}).sort({ createdAt: -1 });
-        res.json(items);
-    } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
-};
-
-// ---------------------------------------------------
-// (ฟังก์ชันเดิมสำหรับ Admin - ไม่ต้องแก้ไข)
-// ---------------------------------------------------
-
-// (GET All - Admin)
+// ⭐️ (GET All - Admin)
 exports.getAllServiceItems = async (req, res) => {
     try {
         const items = await ServiceItem.find({}).sort({ createdAt: -1 });
@@ -30,7 +15,17 @@ exports.getAllServiceItems = async (req, res) => {
     }
 };
 
-// (GET By ID - Admin)
+// ⭐️ (GET Public)
+exports.getPublicServiceItems = async (req, res) => {
+    try {
+        const items = await ServiceItem.find({}).sort({ createdAt: -1 });
+        res.json(items);
+    } catch (error) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    }
+};
+
+// ⭐️ (GET By ID - Admin)
 exports.getServiceItemById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -43,7 +38,7 @@ exports.getServiceItemById = async (req, res) => {
     }
 };
 
-// (POST - Create - Admin)
+// ⭐️ (POST - Create - Admin)
 exports.createServiceItem = async (req, res) => {
     const { title, description, category, fundingAmount, targetAudience, deadline } = req.body;
     const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
@@ -55,7 +50,9 @@ exports.createServiceItem = async (req, res) => {
     try {
         const targetArray = targetAudience ? targetAudience.split(',').map(s => s.trim()) : [];
         const newItem = new ServiceItem({ 
-            title, description, category, 
+            title, 
+            description, 
+            category, 
             fundingAmount: Number(fundingAmount) || 0,
             targetAudience: targetArray,
             deadline: deadline ? new Date(deadline) : null,
@@ -69,7 +66,7 @@ exports.createServiceItem = async (req, res) => {
     }
 };
 
-// (PUT - Update - Admin)
+// ⭐️ (PUT - Update - Admin)
 exports.updateServiceItem = async (req, res) => {
     try {
         const { id } = req.params;
@@ -81,7 +78,9 @@ exports.updateServiceItem = async (req, res) => {
         const targetArray = targetAudience ? targetAudience.split(',').map(s => s.trim()) : [];
         
         const updateData = { 
-            title, description, category, 
+            title, 
+            description, 
+            category, 
             fundingAmount: Number(fundingAmount) || 0,
             targetAudience: targetArray,
             deadline: deadline ? new Date(deadline) : null,
@@ -104,7 +103,7 @@ exports.updateServiceItem = async (req, res) => {
     }
 };
 
-// (DELETE - Admin)
+// ⭐️ (DELETE - Admin)
 exports.deleteServiceItem = async (req, res) => {
     try {
         const { id } = req.params;

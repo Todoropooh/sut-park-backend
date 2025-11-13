@@ -1,4 +1,4 @@
-// server.js (ฉบับ Refactor)
+// server.js (ฉบับ Refactor - Final)
 
 // --- 1. Imports ---
 const express = require('express');
@@ -6,15 +6,16 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path'); 
 
+// ⭐️ (นำเข้า Middleware)
 const { authenticateToken, isAdmin } = require('./middleware/authMiddleware');
 
-// ⭐️ (นำเข้า Controllers - เพิ่ม serviceItemController)
+// ⭐️ (นำเข้า Controllers สำหรับ Public Routes)
 const newsController = require('./controllers/newsController');
 const activityController = require('./controllers/activityController');
 const bookingController = require('./controllers/bookingController');
 const contactController = require('./controllers/contactController');
 const mainController = require('./controllers/mainController');
-const serviceItemController = require('./controllers/serviceItemController'); // ⭐️ (เพิ่ม)
+const serviceItemController = require('./controllers/serviceItemController'); 
 
 // ⭐️ (นำเข้า Admin Routes)
 const newsRoutes = require('./routes/newsRoutes');
@@ -24,7 +25,7 @@ const contactRoutes = require('./routes/contactRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
-const serviceItemRoutes = require('./routes/serviceItemRoutes');
+const serviceItemRoutes = require('./routes/serviceItemRoutes'); // ⭐️ (ลบตัวที่ซ้ำออกแล้ว)
 
 // --- 2. Config ---
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://ksuthikiat_db_user:5ux2ke37SFIjaXW5@sutpark.h7aiwyt.mongodb.net/sut_park_db?appName=sutpark";
@@ -39,8 +40,8 @@ const corsOptions = {
     origin: [
         'http://localhost:5173', // (Admin Panel)
         'https://sut-park-a.vercel.app', // (Admin Panel - Production)
-        null, // (สำหรับเทส HTML local)
-        'https://your-public-website.com' // ⬅️⭐️⭐️ (สำคัญมาก!) ใส่ URL ของ "เว็บสาธารณะ" ของคุณที่นี่
+        null, // ⭐️ (สำคัญ) (สำหรับเทส HTML local)
+        // 'https://your-public-website.com' // (ใส่ URL เว็บสาธารณะของคุณที่นี่)
     ],
     methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS', 
     allowedHeaders: 'Content-Type,Authorization' 
@@ -57,9 +58,7 @@ app.post('/submit-form', contactController.createPublicContact);
 app.get('/public/news', newsController.getPublicNews);
 app.get('/public/activities', activityController.getPublicActivities);
 app.get('/public/bookings', bookingController.getPublicBookings);
-
-// ⭐️⭐️ (สำคัญ) 2. เพิ่ม Route ใหม่สำหรับ Public ⭐️⭐️
-app.get('/public/services', serviceItemController.getPublicServiceItems);
+app.get('/public/services', serviceItemController.getPublicServiceItems); // ⭐️ (Route ใหม่)
 
 
 // --- 5. API Routes (Admin - Protected) ---
@@ -70,7 +69,7 @@ app.use('/api/bookings', authenticateToken, isAdmin, bookingRoutes);
 app.use('/api/contacts', authenticateToken, isAdmin, contactRoutes);
 app.use('/api/documents', authenticateToken, isAdmin, documentRoutes);
 app.use('/api/users', authenticateToken, isAdmin, userRoutes);
-app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes); // (Admin Route ยังอยู่)
+app.use('/api/services', authenticateToken, isAdmin, serviceItemRoutes); 
 
 
 // --- 6. Database Connection and Server Start ---
