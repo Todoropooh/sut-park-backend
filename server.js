@@ -1,14 +1,12 @@
-// server.js (Refactor + Upload to Cloudinary)
+// server.js (Render-ready + Cloudinary upload)
 import dotenv from "dotenv";
-dotenv.config(); // โหลดค่า .env
+dotenv.config();
 
-// --- 1. Imports ---
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import path from "path";
-import fs from "fs";
 
+// Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
 // Controllers
@@ -30,7 +28,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import serviceItemRoutes from "./routes/serviceItemRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js"; // ✅ Upload
 
-// --- 2. Config ---
+// Config
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!";
 
@@ -38,13 +36,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 const host = "0.0.0.0";
 
-// --- 3. Middlewares ---
+// Middlewares
 app.use(express.json());
 
-// Serve uploads folder (optional)
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
-// --- CORS Config ---
+// CORS
 const adminWhitelist = [
   "http://localhost:5173",
   "https://sut-park-a.vercel.app"
@@ -64,7 +59,7 @@ const publicCorsOptions = {
   methods: "GET,POST,OPTIONS",
 };
 
-// --- 4. Public API Routes ---
+// --- Public API Routes ---
 app.get("/api/test", cors(publicCorsOptions), mainController.getApiTest);
 app.get("/public/news", cors(publicCorsOptions), newsController.getPublicNews);
 app.get("/public/activities", cors(publicCorsOptions), activityController.getPublicActivities);
@@ -77,7 +72,7 @@ app.post("/api/login", cors(publicCorsOptions), mainController.loginUser);
 // --- Upload Route ---
 app.use("/api/upload", cors(publicCorsOptions), uploadRoutes);
 
-// --- 5. Admin Protected Routes ---
+// --- Admin Protected Routes ---
 app.use("/api/dashboard", cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
 app.use("/api/news", cors(adminCorsOptions), authenticateToken, isAdmin, newsRoutes);
 app.use("/api/activities", cors(adminCorsOptions), authenticateToken, isAdmin, activityRoutes);
@@ -87,7 +82,7 @@ app.use("/api/documents", cors(adminCorsOptions), authenticateToken, isAdmin, do
 app.use("/api/users", cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
 app.use("/api/services", cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes);
 
-// --- 6. DB Connection + Server Start ---
+// --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
 mongoose
   .connect(MONGO_URI)
@@ -99,7 +94,4 @@ mongoose
   })
   .catch((error) => {
     console.error("❌ MongoDB connection error:", error.message);
-    console.log(
-      "Server not started. Check MONGO_URI, IP whitelist, and network connection."
-    );
   });
