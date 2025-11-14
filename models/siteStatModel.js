@@ -1,6 +1,6 @@
-// models/siteStatModel.js
+// models/siteStatModel.js (Corrected ESM)
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
 
 const siteStatSchema = new mongoose.Schema({
   // ⭐️ (เช่น 'totalPageViews', 'monthlyVisits')
@@ -16,4 +16,4 @@ const siteStatSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('SiteStat', siteStatSchema);
+export default mongoose.model('SiteStat', siteStatSchema); // (บรรทัดนี้ถูกต้องแล้ว)

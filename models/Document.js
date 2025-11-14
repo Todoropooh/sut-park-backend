@@ -1,4 +1,6 @@
-const mongoose = require('mongoose');
+// models/documentModel.js (Corrected ESM)
+
+import mongoose from 'mongoose'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
 
 // สร้าง "พิมพ์เขียว" (Schema)
 const documentSchema = new mongoose.Schema({
@@ -26,4 +28,4 @@ const documentSchema = new mongoose.Schema({
 });
 
 // สร้าง "Model" จาก Schema แล้วส่งออกไปให้ไฟล์อื่นใช้
-export default mongoose.model('Document', documentSchema);
+export default mongoose.model('Document', documentSchema); // (บรรทัดนี้ถูกต้องแล้ว)
