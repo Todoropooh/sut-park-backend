@@ -1,14 +1,11 @@
 import mongoose from "mongoose";
 
 const serviceItemSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  category: { type: String, required: true },
-  fundingAmount: { type: Number, default: 0 },
-  targetAudience: { type: [String], default: [] },
-  deadline: { type: Date },
-  imageUrl: { type: String },
-}, { timestamps: true });
+  title: String,
+  description: String,
+  targetAudience: [String],
+  imageUrl: String,
+  isActive: { type: Boolean, default: true },
+});
 
-const ServiceItem = mongoose.model("ServiceItem", serviceItemSchema);
-export default ServiceItem;
+export default mongoose.model("ServiceItem", serviceItemSchema);

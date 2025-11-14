@@ -1,100 +1,97 @@
-  // server.js (Render-ready + Cloudinary upload)
-  import dotenv from "dotenv";
-  dotenv.config();
-  import express from "express";
-  import cors from "cors";
-  import mongoose from "mongoose";
-  import path from "path";
+import dotenv from "dotenv";
+dotenv.config();
 
-  // Middleware
-  import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import path from "path";
 
-  // Controllers
-  import newsController from "./controllers/newsController.js";
-  import activityController from "./controllers/activityController.js";
-  import bookingController from "./controllers/bookingController.js";
-  import contactController from "./controllers/contactController.js";
-  import mainController from "./controllers/mainController.js";
-  import serviceItemController from "./controllers/serviceItemController.js";
+// Middleware
+import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
-  // Routes
-  import newsRoutes from "./routes/newsRoutes.js";
-  import activityRoutes from "./routes/activityRoutes.js";
-  import bookingRoutes from "./routes/bookingRoutes.js";
-  import contactRoutes from "./routes/contactRoutes.js";
-  import documentRoutes from "./routes/documentRoutes.js";
-  import userRoutes from "./routes/userRoutes.js";
-  import dashboardRoutes from "./routes/dashboardRoutes.js";
-  import serviceItemRoutes from "./routes/serviceItemRoutes.js";
-  import uploadRoutes from "./routes/uploadRoutes.js"; // Cloudinary upload
-  import fileRoutes from "./routes/fileRoutes.js"; // สำหรับไฟล์ทั่วไป
+// Controllers
+import newsController from "./controllers/newsController.js";
+import activityController from "./controllers/activityController.js";
+import bookingController from "./controllers/bookingController.js";
+import contactController from "./controllers/contactController.js";
+import mainController from "./controllers/mainController.js";
+import serviceItemController from "./controllers/serviceItemController.js";
 
-  // Config
-  const MONGO_URI = process.env.MONGO_URI;
-  const JWT_SECRET = process.env.JWT_SECRET || "SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!";
+// Routes
+import newsRoutes from "./routes/newsRoutes.js";
+import activityRoutes from "./routes/activityRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import documentRoutes from "./routes/documentRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import serviceItemRoutes from "./routes/serviceItemRoutes.js";
+import fileRoutes from "./routes/fileRoutes.js"; // สำหรับไฟล์ทั่วไป
 
-  const app = express();
-  const port = process.env.PORT || 3000;
-  const host = "0.0.0.0";
+// Config
+const MONGO_URI = process.env.MONGO_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
 
-  // Middlewares
-  app.use(express.json());
-  app.use("/uploads", express.static(path.join("./uploads"))); // serve static files
+const app = express();
+const port = process.env.PORT || 3000;
+const host = "0.0.0.0";
 
-  // CORS
-  const adminWhitelist = [
-    "http://localhost:5173",
-    "https://sut-park-a.vercel.app"
-  ];
+// Middleware
+app.use(express.json());
+app.use("/uploads", express.static(path.join("./uploads"))); // local upload folder
 
-  const adminCorsOptions = {
-    origin: function (origin, callback) {
-      if (adminWhitelist.indexOf(origin) !== -1 || !origin) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
-    },
-    methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",
-    allowedHeaders: "Content-Type,Authorization",
-  };
+// CORS
+const adminWhitelist = [
+  "http://localhost:5173",
+  "https://sut-park-a.vercel.app"
+];
 
-  const publicCorsOptions = {
-    origin: "*",
-    methods: "GET,POST,OPTIONS",
-  };
+const adminCorsOptions = {
+  origin: function (origin, callback) {
+    if (adminWhitelist.indexOf(origin) !== -1 || !origin) callback(null, true);
+    else callback(new Error("Not allowed by CORS"));
+  },
+  methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",
+  allowedHeaders: "Content-Type,Authorization",
+};
 
-  // --- Public API Routes ---
-  app.get("/api/test", cors(publicCorsOptions), mainController.getApiTest);
-  app.get("/public/news", cors(publicCorsOptions), newsController.getPublicNews);
-  app.get("/public/activities", cors(publicCorsOptions), activityController.getPublicActivities);
-  app.get("/public/bookings", cors(publicCorsOptions), bookingController.getPublicBookings);
-  app.get("/public/services", cors(publicCorsOptions), serviceItemController.getPublicServiceItems);
+const publicCorsOptions = {
+  origin: "*",
+  methods: "GET,POST,OPTIONS",
+};
 
-  app.post("/submit-form", cors(publicCorsOptions), contactController.createPublicContact);
-  app.post("/api/login", cors(publicCorsOptions), mainController.loginUser);
+// Public Routes
+app.get("/api/test", cors(publicCorsOptions), mainController.getApiTest);
+app.get("/public/news", cors(publicCorsOptions), newsController.getPublicNews);
+app.get("/public/activities", cors(publicCorsOptions), activityController.getPublicActivities);
+app.get("/public/bookings", cors(publicCorsOptions), bookingController.getPublicBookings);
+app.get("/public/services", cors(publicCorsOptions), serviceItemController.getPublicServiceItems);
+app.post("/submit-form", cors(publicCorsOptions), contactController.createPublicContact);
+app.post("/api/login", cors(publicCorsOptions), mainController.loginUser);
 
-  // --- Upload Route ---
-  app.use("/api/upload", cors(publicCorsOptions), uploadRoutes);
-  app.use("/public/files", fileRoutes);
+// File serving
+app.use("/public/files", fileRoutes);
 
-  // --- Admin Protected Routes ---
-  app.use("/api/dashboard", cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
-  app.use("/api/news", cors(adminCorsOptions), authenticateToken, isAdmin, newsRoutes);
-  app.use("/api/activities", cors(adminCorsOptions), authenticateToken, isAdmin, activityRoutes);
-  app.use("/api/bookings", cors(adminCorsOptions), authenticateToken, isAdmin, bookingRoutes);
-  app.use("/api/contacts", cors(adminCorsOptions), authenticateToken, isAdmin, contactRoutes);
-  app.use("/api/documents", cors(adminCorsOptions), authenticateToken, isAdmin, documentRoutes);
-  app.use("/api/users", cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
-  app.use("/api/services", cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes);
+// Admin Routes
+app.use("/api/dashboard", cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
+app.use("/api/news", cors(adminCorsOptions), authenticateToken, isAdmin, newsRoutes);
+app.use("/api/activities", cors(adminCorsOptions), authenticateToken, isAdmin, activityRoutes);
+app.use("/api/bookings", cors(adminCorsOptions), authenticateToken, isAdmin, bookingRoutes);
+app.use("/api/contacts", cors(adminCorsOptions), authenticateToken, isAdmin, contactRoutes);
+app.use("/api/documents", cors(adminCorsOptions), authenticateToken, isAdmin, documentRoutes);
+app.use("/api/users", cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
+app.use("/api/services", cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes);
 
-  // --- DB + Server Start ---
-  console.log("Connecting to MongoDB...");
-  mongoose
-    .connect(MONGO_URI)
-    .then(() => {
-      console.log("✅ MongoDB connected successfully!");
-      app.listen(port, host, () => {
-        console.log(`✅ Server running at http://${host}:${port}`);
-      });
-    })
-    .catch((error) => {
-      console.error("❌ MongoDB connection error:", error.message);
+// Start Server
+console.log("Connecting to MongoDB...");
+mongoose
+  .connect(MONGO_URI)
+  .then(() => {
+    console.log("✅ MongoDB connected successfully!");
+    app.listen(port, host, () => {
+      console.log(`✅ Server running at http://${host}:${port}`);
     });
+  })
+  .catch((error) => {
+    console.error("❌ MongoDB connection error:", error.message);
+  });
