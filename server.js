@@ -44,7 +44,8 @@ app.use("/uploads", express.static(path.join("./uploads"))); // local upload fol
 // CORS
 const adminWhitelist = [
   "http://localhost:5173",
-  "https://sut-park-a.vercel.app"
+  "https://sut-park-a.vercel.app",
+  "http://localhost:5174",
 ];
 
 const adminCorsOptions = {
