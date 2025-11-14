@@ -1,3 +1,4 @@
+// server.js
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -9,13 +10,13 @@ import path from "path";
 // Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
-// Controllers (ใช้ named import เพื่อแก้ปัญหา default export)
-import * as newsController from "./controllers/newsController.js";
-import * as activityController from "./controllers/activityController.js";
-import * as bookingController from "./controllers/bookingController.js";
-import * as contactController from "./controllers/contactController.js";
-import * as mainController from "./controllers/mainController.js";
-import * as serviceItemController from "./controllers/serviceItemController.js";
+// Controllers
+import newsController from "./controllers/newsController.js";
+import activityController from "./controllers/activityController.js";
+import bookingController from "./controllers/bookingController.js";
+import contactController from "./controllers/contactController.js";
+import mainController from "./controllers/mainController.js";
+import serviceItemController from "./controllers/serviceItemController.js";
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
@@ -30,7 +31,7 @@ import fileRoutes from "./routes/fileRoutes.js"; // สำหรับไฟล�
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -38,7 +39,7 @@ const host = "0.0.0.0";
 
 // Middleware
 app.use(express.json());
-app.use("/uploads", express.static(path.join("./uploads"))); // serve local upload folder
+app.use("/uploads", express.static(path.join("./uploads"))); // local upload folder
 
 // CORS
 const adminWhitelist = [
@@ -66,10 +67,11 @@ app.get("/public/news", cors(publicCorsOptions), newsController.getPublicNews);
 app.get("/public/activities", cors(publicCorsOptions), activityController.getPublicActivities);
 app.get("/public/bookings", cors(publicCorsOptions), bookingController.getPublicBookings);
 app.get("/public/services", cors(publicCorsOptions), serviceItemController.getPublicServiceItems);
+
 app.post("/submit-form", cors(publicCorsOptions), contactController.createPublicContact);
 app.post("/api/login", cors(publicCorsOptions), mainController.loginUser);
 
-// --- File serving ---
+// File serving
 app.use("/public/files", fileRoutes);
 
 // --- Admin Protected Routes ---
