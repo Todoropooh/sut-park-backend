@@ -14,4 +14,4 @@ router.put('/:id/update-role', userController.updateUserRole);
 router.put('/:id/change-password', userController.changeUserPassword);
 router.delete('/:id', userController.deleteUser);
 
-module.exports = router;
+export default router;

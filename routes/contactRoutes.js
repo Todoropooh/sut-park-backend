@@ -12,4 +12,4 @@ router.get('/:id', contactController.getContactById);
 router.patch('/:id/read', contactController.updateContactReadStatus); // (ใช้ PATCH สำหรับอัปเดตเล็กน้อย)
 router.delete('/:id', contactController.deleteContact);
 
-module.exports = router;
+export default router;

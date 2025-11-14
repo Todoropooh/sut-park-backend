@@ -22,4 +22,4 @@ router.post('/', upload.single('imageUrl'), newsController.createNews); // ⭐�
 router.put('/:id', upload.single('imageUrl'), newsController.updateNews); // ⭐️ ใช้ตัวอัปโหลด
 router.delete('/:id', newsController.deleteNews);
 
-module.exports = router;
+export default router;

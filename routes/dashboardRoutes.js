@@ -12,4 +12,4 @@ const dashboardController = require('../controllers/dashboardController');
 // 2. ⭐️ (สำคัญ) Path จริงคือ /api/dashboard/stats
 router.get('/stats', dashboardController.getDashboardStats); 
 
-module.exports = router;
+export default router;

@@ -13,4 +13,4 @@ router.get('/', documentController.getAllDocuments);
 router.delete('/:id', documentController.deleteDocument);
 router.get('/:id/download', documentController.downloadDocument);
 
-module.exports = router;
+export default router;

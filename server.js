@@ -11,8 +11,7 @@ import path from "path";
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
 // Controllers
-// (*** นี่คือส่วนที่แก้ไข ***)
-// เปลี่ยนการนำเข้าทั้งหมดเป็น 'import * as ...'
+// (*** นี่คือส่วนที่แก้ไขแล้ว ***)
 import * as newsController from "./controllers/newsController.js";
 import * as activityController from "./controllers/activityController.js";
 import * as bookingController from "./controllers/bookingController.js";
@@ -21,6 +20,7 @@ import * as mainController from "./controllers/mainController.js";
 import * as serviceItemController from "./controllers/serviceItemController.js";
 
 // Routes
+// (*** ส่วนนี้ Import ถูกต้องแล้ว ***)
 import newsRoutes from "./routes/newsRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
