@@ -9,13 +9,13 @@ import path from "path";
 // Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
-// Controllers
-import newsController from "./controllers/newsController.js";
-import activityController from "./controllers/activityController.js";
-import bookingController from "./controllers/bookingController.js";
-import contactController from "./controllers/contactController.js";
-import mainController from "./controllers/mainController.js";
-import serviceItemController from "./controllers/serviceItemController.js";
+// Controllers (ใช้ named import เพื่อแก้ปัญหา default export)
+import * as newsController from "./controllers/newsController.js";
+import * as activityController from "./controllers/activityController.js";
+import * as bookingController from "./controllers/bookingController.js";
+import * as contactController from "./controllers/contactController.js";
+import * as mainController from "./controllers/mainController.js";
+import * as serviceItemController from "./controllers/serviceItemController.js";
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
@@ -38,7 +38,7 @@ const host = "0.0.0.0";
 
 // Middleware
 app.use(express.json());
-app.use("/uploads", express.static(path.join("./uploads"))); // local upload folder
+app.use("/uploads", express.static(path.join("./uploads"))); // serve local upload folder
 
 // CORS
 const adminWhitelist = [
@@ -60,7 +60,7 @@ const publicCorsOptions = {
   methods: "GET,POST,OPTIONS",
 };
 
-// Public Routes
+// --- Public API Routes ---
 app.get("/api/test", cors(publicCorsOptions), mainController.getApiTest);
 app.get("/public/news", cors(publicCorsOptions), newsController.getPublicNews);
 app.get("/public/activities", cors(publicCorsOptions), activityController.getPublicActivities);
@@ -69,10 +69,10 @@ app.get("/public/services", cors(publicCorsOptions), serviceItemController.getPu
 app.post("/submit-form", cors(publicCorsOptions), contactController.createPublicContact);
 app.post("/api/login", cors(publicCorsOptions), mainController.loginUser);
 
-// File serving
+// --- File serving ---
 app.use("/public/files", fileRoutes);
 
-// Admin Routes
+// --- Admin Protected Routes ---
 app.use("/api/dashboard", cors(adminCorsOptions), authenticateToken, isAdmin, dashboardRoutes);
 app.use("/api/news", cors(adminCorsOptions), authenticateToken, isAdmin, newsRoutes);
 app.use("/api/activities", cors(adminCorsOptions), authenticateToken, isAdmin, activityRoutes);
@@ -82,7 +82,7 @@ app.use("/api/documents", cors(adminCorsOptions), authenticateToken, isAdmin, do
 app.use("/api/users", cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
 app.use("/api/services", cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes);
 
-// Start Server
+// --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
 mongoose
   .connect(MONGO_URI)
