@@ -12,7 +12,7 @@ import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
 // Controllers
 import newsController from "./controllers/newsController.js";
-import activityController from "./controllers/activityController.js";
+import * as activityController from "./controllers/activityController.js";
 import bookingController from "./controllers/bookingController.js";
 import contactController from "./controllers/contactController.js";
 import mainController from "./controllers/mainController.js";
@@ -31,8 +31,6 @@ import fileRoutes from "./routes/fileRoutes.js"; // สำหรับไฟล�
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
-const JWT_SECRET = process.env.JWT_SECRET || "SUTPARK_SECRET_KEY_@2025_CHANGE_ME_NOW!";
-
 const app = express();
 const port = process.env.PORT || 3000;
 const host = "0.0.0.0";
@@ -48,7 +46,7 @@ const adminWhitelist = [
 ];
 
 const adminCorsOptions = {
-  origin: function (origin, callback) {
+  origin: (origin, callback) => {
     if (adminWhitelist.indexOf(origin) !== -1 || !origin) callback(null, true);
     else callback(new Error("Not allowed by CORS"));
   },
@@ -61,7 +59,7 @@ const publicCorsOptions = {
   methods: "GET,POST,OPTIONS",
 };
 
-// --- Public API Routes ---
+// --- Public Routes ---
 app.get("/api/test", cors(publicCorsOptions), mainController.getApiTest);
 app.get("/public/news", cors(publicCorsOptions), newsController.getPublicNews);
 app.get("/public/activities", cors(publicCorsOptions), activityController.getPublicActivities);

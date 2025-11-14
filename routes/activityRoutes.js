@@ -1,17 +1,25 @@
 // routes/activityRoutes.js
+import express from "express";
+import multer from "multer";
+import * as activityController from "../controllers/activityController.js";
 
-const express = require('express');
 const router = express.Router();
 
-const { upload } = require('../middleware/uploadMiddleware');
-const activityController = require('../controllers/activityController');
+// Multer storage (local upload)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+const upload = multer({ storage });
 
-// (Path '/' ที่นี่ หมายถึง '/api/activities')
+// Public
+router.get("/public", activityController.getPublicActivities);
 
-router.get('/', activityController.getAllActivities);
-router.get('/:id', activityController.getActivityById);
-router.post('/', upload.single('imageUrl'), activityController.createActivity);
-router.put('/:id', upload.single('imageUrl'), activityController.updateActivity);
-router.delete('/:id', activityController.deleteActivity);
+// Admin / Protected
+router.get("/", activityController.getAllActivities);
+router.get("/:id", activityController.getActivityById);
+router.post("/", upload.single("image"), activityController.createActivity);
+router.put("/:id", upload.single("image"), activityController.updateActivity);
+router.delete("/:id", activityController.deleteActivity);
 
-module.exports = router;
+export default router;

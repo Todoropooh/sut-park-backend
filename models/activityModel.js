@@ -1,12 +1,11 @@
 // models/activityModel.js
-
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const activitySchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    date: { type: Date, required: true },
-    content: { type: String, required: true },
-    imageUrl: { type: String } 
+  title: { type: String, required: true },
+  date: { type: Date, required: true },
+  content: { type: String, required: true },
+  imageUrl: { type: String },
 });
 
-module.exports = mongoose.model('Activity', activitySchema);
+export default mongoose.model("Activity", activitySchema);
