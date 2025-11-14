@@ -26,4 +26,4 @@ const documentSchema = new mongoose.Schema({
 });
 
 // สร้าง "Model" จาก Schema แล้วส่งออกไปให้ไฟล์อื่นใช้
-module.exports = mongoose.model('Document', documentSchema);
+export default mongoose.model('Document', documentSchema);

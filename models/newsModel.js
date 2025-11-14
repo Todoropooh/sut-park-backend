@@ -1,13 +1,14 @@
-// models/newsModel.js
+// models/newsModel.js (Corrected)
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const newsSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    category: { type: String }, 
-    content: { type: String, required: true },
-    imageUrl: { type: String }, 
-    publishedAt: { type: Date, default: Date.now }
+    title: { type: String, required: true },
+    category: { type: String }, 
+    content: { type: String, required: true },
+    imageUrl: { type: String }, 
+    publishedAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('News', newsSchema);
+// เปลี่ยนจาก module.exports เป็น export default ครับ
+export default mongoose.model('News', newsSchema);

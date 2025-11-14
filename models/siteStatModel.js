@@ -16,4 +16,4 @@ const siteStatSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('SiteStat', siteStatSchema);
+export default mongoose.model('SiteStat', siteStatSchema);

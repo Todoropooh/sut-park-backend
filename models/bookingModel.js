@@ -17,4 +17,4 @@ const bookingSchema = new mongoose.Schema({
     submittedAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Booking', bookingSchema);
+export default mongoose.model('Booking', bookingSchema);

@@ -6,4 +6,6 @@ const fileSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now } // เวลาที่อัปโหลด
 });
 
-export const File = mongoose.model('File', fileSchema);
+ const File = mongoose.model('File', fileSchema);
+
+export default File;
