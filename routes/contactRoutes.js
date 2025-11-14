@@ -1,9 +1,10 @@
-// routes/contactRoutes.js
+// routes/contactRoutes.js (Corrected ESM)
 
-const express = require('express');
+import express from 'express'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
 const router = express.Router();
 
-const contactController = require('../controllers/contactController');
+// 2. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import * as ...'
+import * as contactController from '../controllers/contactController.js';
 
 // (Path '/' ที่นี่ หมายถึง '/api/contacts')
 
@@ -12,4 +13,4 @@ router.get('/:id', contactController.getContactById);
 router.patch('/:id/read', contactController.updateContactReadStatus); // (ใช้ PATCH สำหรับอัปเดตเล็กน้อย)
 router.delete('/:id', contactController.deleteContact);
 
-export default router;
+export default router; // (บรรทัดนี้ถูกต้องแล้ว)

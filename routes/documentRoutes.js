@@ -1,10 +1,12 @@
-// routes/documentRoutes.js
+// routes/documentRoutes.js (Corrected ESM)
 
-const express = require('express');
+import express from 'express'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
 const router = express.Router();
 
-const { documentUpload } = require('../middleware/uploadMiddleware'); // ⭐️ ใช้ตัวอัปโหลดเอกสาร
-const documentController = require('../controllers/documentController');
+// 2. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import { ... }'
+import { documentUpload } from '../middleware/uploadMiddleware.js';
+// 3. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import * as ...'
+import * as documentController from '../controllers/documentController.js';
 
 // (Path '/' ที่นี่ หมายถึง '/api/documents')
 
@@ -13,4 +15,4 @@ router.get('/', documentController.getAllDocuments);
 router.delete('/:id', documentController.deleteDocument);
 router.get('/:id/download', documentController.downloadDocument);
 
-export default router;
+export default router; // (บรรทัดนี้ถูกต้องแล้ว)

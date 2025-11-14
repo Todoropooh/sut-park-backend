@@ -1,25 +1,22 @@
-// routes/newsRoutes.js
+// routes/newsRoutes.js (Corrected ESM)
 
-const express = require('express');
+import express from 'express'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
 const router = express.Router();
 
-// 1. นำเข้า "ยาม" (เราไม่ต้องใช้ เพราะ server.js จะคุม)
-// const { authenticateToken, isAdmin } = require('../middleware/authMiddleware');
+// (Middleware และ Controller)
+// 2. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import { ... }'
+import { upload } from '../middleware/uploadMiddleware.js'; 
 
-// 2. นำเข้า "ตัวอัปโหลด"
-const { upload } = require('../middleware/uploadMiddleware');
-
-// 3. นำเข้า "สมอง"
-const newsController = require('../controllers/newsController');
+// 3. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import * as ...'
+import * as newsController from '../controllers/newsController.js';
 
 // --- API Routes (Admin) ---
-// (หมายเหตุ: server.js จะใส่ "ยาม" ให้กับ router นี้ทั้งก้อน)
 // (Path '/' ที่นี่ จึงหมายถึง '/api/news')
 
 router.get('/', newsController.getAllNews);
 router.get('/:id', newsController.getNewsById);
-router.post('/', upload.single('imageUrl'), newsController.createNews); // ⭐️ ใช้ตัวอัปโหลด
-router.put('/:id', upload.single('imageUrl'), newsController.updateNews); // ⭐️ ใช้ตัวอัปโหลด
+router.post('/', upload.single('imageUrl'), newsController.createNews); 
+router.put('/:id', upload.single('imageUrl'), newsController.updateNews); 
 router.delete('/:id', newsController.deleteNews);
 
-export default router;
+export default router; // (บรรทัดนี้ถูกต้องแล้ว)

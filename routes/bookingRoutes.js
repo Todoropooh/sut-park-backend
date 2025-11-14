@@ -1,9 +1,10 @@
-// routes/bookingRoutes.js
+// routes/bookingRoutes.js (Corrected ESM)
 
-const express = require('express');
+import express from 'express'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
 const router = express.Router();
 
-const bookingController = require('../controllers/bookingController');
+// 2. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import * as ...'
+import * as bookingController from '../controllers/bookingController.js';
 
 // (Path '/' ที่นี่ หมายถึง '/api/bookings')
 
@@ -12,4 +13,4 @@ router.post('/', bookingController.createBooking);
 router.put('/:id', bookingController.updateBooking);
 router.delete('/:id', bookingController.deleteBooking);
 
-export default router;
+export default router; // (บรรทัดนี้ถูกต้องแล้ว)
