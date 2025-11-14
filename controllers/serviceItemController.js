@@ -7,7 +7,6 @@ export const getServiceItems = async (req, res) => {
     const items = await ServiceItem.find();
     res.json(items);
   } catch (err) {
-    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
     console.error("Error in getServiceItems:", err);
     res.status(500).json({ error: "Server error" });
   }
@@ -18,7 +17,6 @@ export const getPublicServiceItems = async (req, res) => {
     const items = await ServiceItem.find({ isActive: true });
     res.json(items);
   } catch (err) {
-    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
     console.error("Error in getPublicServiceItems:", err);
     res.status(500).json({ error: "Server error" });
   }
@@ -26,21 +24,19 @@ export const getPublicServiceItems = async (req, res) => {
 
 export const createServiceItem = async (req, res) => {
   try {
-    const { title, description, targetAudience } = req.body;
+    const { title, description, targetAudience } = req.body; // targetAudience คือ Array อยู่แล้ว
 
     const item = new ServiceItem({
       title,
       description,
-      targetAudience: targetAudience?.split(",") || [],
-      // ⭐️ (หมายเหตุ) โค้ดนี้ใช้ Cloudinary หรือ Multer ครับ?
-      // ถ้าเป็น Multer (แบบ local) path นี้ถูกต้อง
+      // ⭐️ (แก้ไข) ลบ .split() ออก เพราะ Frontend ส่งมาเป็น Array อยู่แล้ว
+      targetAudience: targetAudience || [], 
       imageUrl: req.file ? `/uploads/services/${req.file.filename}` : null,
     });
 
     await item.save();
     res.json(item);
   } catch (err) {
-    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
     console.error("Error in createServiceItem:", err);
     res.status(500).json({ error: err.message });
   }
@@ -48,12 +44,13 @@ export const createServiceItem = async (req, res) => {
 
 export const updateServiceItem = async (req, res) => {
   try {
-    const { title, description, targetAudience } = req.body;
+    const { title, description, targetAudience } = req.body; // targetAudience คือ Array อยู่แล้ว
 
     const updateData = {
       title,
       description,
-      targetAudience: targetAudience?.split(",") || [],
+      // ⭐️ (แก้ไข) ลบ .split() ออก (นี่คือบรรทัด 56 ที่ Error)
+      targetAudience: targetAudience || [],
     };
 
     if (req.file) {
@@ -64,7 +61,6 @@ export const updateServiceItem = async (req, res) => {
 
     res.json(updated);
   } catch (err) {
-    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
     console.error("Error in updateServiceItem:", err);
     res.status(500).json({ error: err.message });
   }
@@ -75,7 +71,6 @@ export const deleteServiceItem = async (req, res) => {
     await ServiceItem.findByIdAndDelete(req.params.id);
     res.json({ message: "Item deleted" });
   } catch (err) {
-    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
     console.error("Error in deleteServiceItem:", err);
     res.status(500).json({ error: err.message });
   }
