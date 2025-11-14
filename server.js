@@ -1,4 +1,4 @@
-// server.js
+// server.js (Corrected)
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -11,12 +11,14 @@ import path from "path";
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
 // Controllers
-import newsController from "./controllers/newsController.js";
+// (*** นี่คือส่วนที่แก้ไข ***)
+// เปลี่ยนการนำเข้าทั้งหมดเป็น 'import * as ...'
+import * as newsController from "./controllers/newsController.js";
 import * as activityController from "./controllers/activityController.js";
-import bookingController from "./controllers/bookingController.js";
-import contactController from "./controllers/contactController.js";
-import mainController from "./controllers/mainController.js";
-import serviceItemController from "./controllers/serviceItemController.js";
+import * as bookingController from "./controllers/bookingController.js";
+import * as contactController from "./controllers/contactController.js";
+import * as mainController from "./controllers/mainController.js";
+import * as serviceItemController from "./controllers/serviceItemController.js";
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
