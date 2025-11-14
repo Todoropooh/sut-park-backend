@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import serviceItemController from "../controllers/serviceItemController.js";
+import * as serviceItemController from "../controllers/serviceItemController.js";
 
 const router = express.Router();
 
