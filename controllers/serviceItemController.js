@@ -2,14 +2,13 @@
 
 import ServiceItem from "../models/serviceItemModel.js";
 
-// 1. ⭐️ (แก้ไข) ลบ 'export default {' ออก
-// 2. ⭐️ (แก้ไข) เพิ่ม 'export const' หน้าแต่ละฟังก์ชัน
-
 export const getServiceItems = async (req, res) => {
   try {
     const items = await ServiceItem.find();
     res.json(items);
   } catch (err) {
+    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
+    console.error("Error in getServiceItems:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -19,6 +18,8 @@ export const getPublicServiceItems = async (req, res) => {
     const items = await ServiceItem.find({ isActive: true });
     res.json(items);
   } catch (err) {
+    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
+    console.error("Error in getPublicServiceItems:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -31,12 +32,16 @@ export const createServiceItem = async (req, res) => {
       title,
       description,
       targetAudience: targetAudience?.split(",") || [],
+      // ⭐️ (หมายเหตุ) โค้ดนี้ใช้ Cloudinary หรือ Multer ครับ?
+      // ถ้าเป็น Multer (แบบ local) path นี้ถูกต้อง
       imageUrl: req.file ? `/uploads/services/${req.file.filename}` : null,
     });
 
     await item.save();
     res.json(item);
   } catch (err) {
+    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
+    console.error("Error in createServiceItem:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -59,6 +64,8 @@ export const updateServiceItem = async (req, res) => {
 
     res.json(updated);
   } catch (err) {
+    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
+    console.error("Error in updateServiceItem:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -68,8 +75,8 @@ export const deleteServiceItem = async (req, res) => {
     await ServiceItem.findByIdAndDelete(req.params.id);
     res.json({ message: "Item deleted" });
   } catch (err) {
+    // ⭐️ (เพิ่ม) พิมพ์ Error ลง Log
+    console.error("Error in deleteServiceItem:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
-// (ลบ '};' ที่อยู่ล่างสุดทิ้งไป)
