@@ -1,4 +1,4 @@
-// server.js (แก้ไขแล้ว)
+// server.js (Updated)
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -28,7 +28,8 @@ import userRoutes from "./routes/userRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import serviceItemRoutes from "./routes/serviceItemRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js"; 
-import folderRoutes from "./routes/folderRoutes.js"; // ⭐️ 1. (เพิ่ม) Import ไฟล์ Routes ใหม่
+import folderRoutes from "./routes/folderRoutes.js"; 
+import trashRoutes from "./routes/trashRoutes.js"; // ⭐️ 1. (Added) Import new routes
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -83,9 +84,10 @@ app.use("/api/contacts", cors(adminCorsOptions), authenticateToken, isAdmin, con
 app.use("/api/documents", cors(adminCorsOptions), authenticateToken, isAdmin, documentRoutes);
 app.use("/api/users", cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
 app.use("/api/services", cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes);
-
-// ⭐️ 2. (เพิ่ม) เปิดใช้งาน Routes ใหม่ (พร้อมยาม)
 app.use("/api/folders", cors(adminCorsOptions), authenticateToken, isAdmin, folderRoutes);
+
+// ⭐️ 2. (Added) Activate the new routes (with security)
+app.use("/api/trash", cors(adminCorsOptions), authenticateToken, isAdmin, trashRoutes);
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");

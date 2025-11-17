@@ -1,4 +1,4 @@
-// models/folderModel.js (ไฟล์ใหม่)
+// models/folderModel.js (แก้ไข - เพิ่ม Soft Delete)
 
 import mongoose from 'mongoose';
 
@@ -7,15 +7,25 @@ const folderSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  // ⭐️ นี่คือหัวใจของระบบ (Recursive)
   parentId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Folder', // ⭐️ ชี้กลับไปที่ Model 'Folder' (ตัวมันเอง)
-    default: null, // ⭐️ ถ้าเป็น null = อยู่ Root
+    ref: 'Folder', 
+    default: null, 
   },
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  
+  // ⭐️⭐️⭐️ (เพิ่ม 2 ช่องนี้ครับ) ⭐️⭐️⭐️
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true // (เพิ่ม index ให้ค้นหาเร็วขึ้น)
+  },
+  deletedAt: {
+    type: Date,
+    default: null
   }
 });
 

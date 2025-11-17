@@ -1,4 +1,4 @@
-// models/documentModel.js (แก้ไขแล้ว)
+// models/documentModel.js (Updated - Added Soft Delete)
 
 import mongoose from 'mongoose';
 
@@ -12,7 +12,7 @@ const documentSchema = new mongoose.Schema({
     required: true, 
     unique: true 
   },
-  path: { // (Path ที่เราใช้ใน Multer /uploads/documents/...)
+  path: { // (Path that we use in Multer /uploads/documents/...)
     type: String, 
     required: true 
   },
@@ -21,16 +21,12 @@ const documentSchema = new mongoose.Schema({
     required: false 
   },
   
-  // ⭐️ (ลบ) 'category' ถูกลบออก
-  
-  // ⭐️ (เพิ่ม) 'folderId'
   folderId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Folder', // ⭐️ ชี้ไปที่ Model 'Folder'
-    default: null, // ⭐️ ถ้าเป็น null = อยู่ Root
+    ref: 'Folder', // ⭐️ Points to the 'Folder' Model
+    default: null, // ⭐️ null = in Root
   },
   
-  // ⭐️ (เพิ่ม) 'size' (ตาม Requirement ข้อ 5)
   size: {
     type: Number,
     default: 0
@@ -39,6 +35,17 @@ const documentSchema = new mongoose.Schema({
   uploadedAt: { 
     type: Date, 
     default: Date.now 
+  },
+
+  // ⭐️⭐️⭐️ (Added these 2 fields) ⭐️⭐️⭐️
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true 
+  },
+  deletedAt: {
+    type: Date,
+    default: null
   }
 });
 
