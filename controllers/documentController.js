@@ -1,4 +1,4 @@
-// controllers/documentController.js (แก้ไขแล้ว)
+// controllers/documentController.js (แก้ไข Typo แล้ว)
 
 import Document from '../models/documentModel.js';
 import fs from 'fs';
@@ -6,18 +6,17 @@ import path from 'path';
 import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 
-// (Fix __dirname ที่เราเคยทำ)
+// (Fix __dirname)
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(filename);
+const __dirname = path.dirname(__filename); // ⭐️ (แก้ไข) นี่คือบรรทัดที่แก้ครับ
 
-// --- 1. ⭐️ (แก้ไข) อัปเดตฟังก์ชัน Upload ---
+// --- 1. (แก้ไข) อัปเดตฟังก์ชัน Upload ---
 export const uploadDocument = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'ไม่มีไฟล์ถูกอัปโหลด' });
     }
     
-    // ⭐️ 1.1 ดึง 'folderId' จาก req.body (ที่ส่งมาจากฟอร์ม)
     const { description, folderId } = req.body;
     const { originalname, filename, size } = req.file;
 
@@ -28,12 +27,8 @@ export const uploadDocument = async (req, res) => {
       storedFilename: filename,
       path: fileUrlPath, 
       description: description || 'ไม่มีคำอธิบาย',
-      
-      // ⭐️ 1.2 เพิ่ม folderId และ size
-      folderId: folderId || null, // (ถ้าไม่ส่งมา = อยู่ Root)
+      folderId: folderId || null, 
       size: size || 0,
-      
-      // (ลบ 'category' ออก)
     });
 
     await newDocument.save();
@@ -49,12 +44,10 @@ export const uploadDocument = async (req, res) => {
   }
 };
 
-// --- (ฟังก์ชันที่เหลือ - เหมือนเดิม แต่ตรวจสอบ Path) ---
+// --- (ฟังก์ชันที่เหลือ - เหมือนเดิม) ---
 
 export const getAllDocuments = async (req, res) => {
   try {
-    // (หมายเหตุ: ฟังก์ชันนี้จะไม่ได้ใช้ในระบบใหม่
-    //  เพราะเราจะใช้ 'getContents' จาก folderController แทน)
     const documents = await Document.find().sort({ uploadedAt: -1 });
     res.json(documents);
   } catch (error) {
@@ -64,9 +57,6 @@ export const getAllDocuments = async (req, res) => {
 };
 
 export const deleteDocument = async (req, res) => {
-  // (หมายเหตุ: ฟังก์ชันนี้จะไม่ได้ใช้ในระบบใหม่
-  //  เพราะเราจะใช้ 'deleteItem' จาก folderController แทน
-  //  แต่เรายังเก็บไว้เผื่อใช้)
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID เอกสารไม่ถูกต้อง' }); }
@@ -76,11 +66,10 @@ export const deleteDocument = async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
     }
 
-    // ⭐️ (ตรวจสอบ) Path นี้ถูกต้อง (เพราะเราแก้ __dirname แล้ว)
     const filePath = path.join(__dirname, '../', document.path.substring(1)); 
 
     if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath); // (เปลี่ยนเป็น Sync เพื่อง่ายต่อการจัดการ)
+      fs.unlinkSync(filePath); 
     } else {
       console.warn(`ไม่สามารถลบไฟล์ได้ (ไม่พบ): ${filePath}`);
     }
@@ -104,7 +93,6 @@ export const downloadDocument = async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
     }
 
-    // ⭐️ (ตรวจสอบ) Path นี้ถูกต้อง (เพราะเราแก้ __dirname แล้ว)
     const filePath = path.join(__dirname, '../', document.path.substring(1)); 
 
     if (fs.existsSync(filePath)) {
