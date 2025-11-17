@@ -1,4 +1,4 @@
-// server.js (Corrected)
+// server.js (แก้ไขแล้ว)
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -11,7 +11,6 @@ import path from "path";
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
 // Controllers
-// (*** นี่คือส่วนที่แก้ไขแล้ว ***)
 import * as newsController from "./controllers/newsController.js";
 import * as activityController from "./controllers/activityController.js";
 import * as bookingController from "./controllers/bookingController.js";
@@ -20,7 +19,6 @@ import * as mainController from "./controllers/mainController.js";
 import * as serviceItemController from "./controllers/serviceItemController.js";
 
 // Routes
-// (*** ส่วนนี้ Import ถูกต้องแล้ว ***)
 import newsRoutes from "./routes/newsRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -29,7 +27,8 @@ import documentRoutes from "./routes/documentRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import serviceItemRoutes from "./routes/serviceItemRoutes.js";
-import fileRoutes from "./routes/fileRoutes.js"; // สำหรับไฟล์ทั่วไป
+import fileRoutes from "./routes/fileRoutes.js"; 
+import folderRoutes from "./routes/folderRoutes.js"; // ⭐️ 1. (เพิ่ม) Import ไฟล์ Routes ใหม่
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -39,7 +38,7 @@ const host = "0.0.0.0";
 
 // Middleware
 app.use(express.json());
-app.use("/uploads", express.static(path.join("./uploads"))); // local upload folder
+app.use("/uploads", express.static(path.join("./uploads"))); 
 
 // CORS
 const adminWhitelist = [
@@ -84,6 +83,9 @@ app.use("/api/contacts", cors(adminCorsOptions), authenticateToken, isAdmin, con
 app.use("/api/documents", cors(adminCorsOptions), authenticateToken, isAdmin, documentRoutes);
 app.use("/api/users", cors(adminCorsOptions), authenticateToken, isAdmin, userRoutes);
 app.use("/api/services", cors(adminCorsOptions), authenticateToken, isAdmin, serviceItemRoutes);
+
+// ⭐️ 2. (เพิ่ม) เปิดใช้งาน Routes ใหม่ (พร้อมยาม)
+app.use("/api/folders", cors(adminCorsOptions), authenticateToken, isAdmin, folderRoutes);
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
