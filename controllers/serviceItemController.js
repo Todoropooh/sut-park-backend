@@ -1,4 +1,4 @@
-// controllers/serviceItemController.js (Corrected ESM)
+// controllers/serviceItemController.js (แก้ไขแล้ว)
 
 import ServiceItem from "../models/serviceItemModel.js";
 
@@ -24,14 +24,18 @@ export const getPublicServiceItems = async (req, res) => {
 
 export const createServiceItem = async (req, res) => {
   try {
-    const { title, description, targetAudience } = req.body; // targetAudience คือ Array อยู่แล้ว
+    // ⭐️ (แก้ไข) 1. ดึงข้อมูลใหม่จาก body
+    const { title, description, targetAudience, startDate, linkUrl } = req.body; 
 
     const item = new ServiceItem({
       title,
       description,
-      // ⭐️ (แก้ไข) ลบ .split() ออก เพราะ Frontend ส่งมาเป็น Array อยู่แล้ว
-      targetAudience: targetAudience || [], 
+      targetAudience: targetAudience || [],
       imageUrl: req.file ? `/uploads/services/${req.file.filename}` : null,
+      
+      // ⭐️ (แก้ไข) 2. เพิ่มข้อมูลใหม่
+      startDate: startDate || null,
+      linkUrl: linkUrl || null
     });
 
     await item.save();
@@ -44,13 +48,17 @@ export const createServiceItem = async (req, res) => {
 
 export const updateServiceItem = async (req, res) => {
   try {
-    const { title, description, targetAudience } = req.body; // targetAudience คือ Array อยู่แล้ว
+    // ⭐️ (แก้ไข) 1. ดึงข้อมูลใหม่จาก body
+    const { title, description, targetAudience, startDate, linkUrl } = req.body;
 
     const updateData = {
       title,
       description,
-      // ⭐️ (แก้ไข) ลบ .split() ออก (นี่คือบรรทัด 56 ที่ Error)
       targetAudience: targetAudience || [],
+
+      // ⭐️ (แก้ไข) 2. เพิ่มข้อมูลใหม่
+      startDate: startDate || null,
+      linkUrl: linkUrl || null
     };
 
     if (req.file) {
