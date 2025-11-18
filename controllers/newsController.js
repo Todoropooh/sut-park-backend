@@ -1,18 +1,16 @@
-// controllers/newsController.js (Corrected ESM)
+// controllers/newsController.js (Updated for Soft Delete)
 
-// 1. ⭐️ (แก้ไข) เปลี่ยน 'require' ทั้งหมดเป็น 'import'
 import News from '../models/newsModel.js';
 import SiteStat from '../models/siteStatModel.js';
 import fs from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
-import { fileURLToPath } from 'url'; // ⭐️ (เพิ่ม) สำหรับแก้ __dirname
+import { fileURLToPath } from 'url';
 
-// 2. ⭐️ (เพิ่ม) Fix __dirname ที่ไม่รองรับใน ES Modules
+// (Fix __dirname ของคุณถูกต้องแล้ว)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 3. ⭐️ (แก้ไข) เปลี่ยน 'exports.getPublicNews' เป็น 'export const getPublicNews'
 export const getPublicNews = async (req, res) => {
     try {
         SiteStat.findOneAndUpdate(
@@ -21,17 +19,18 @@ export const getPublicNews = async (req, res) => {
             { upsert: true, new: true }
         ).exec(); 
 
-        const news = await News.find({}).sort({ publishedAt: -1 });
+        // 👇 [แก้ไข] กรองเฉพาะข่าวที่ยังไม่ถูกลบ
+        const news = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
         res.json(news);
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
     }
 };
 
-// 4. ⭐️ (แก้ไข) เพิ่ม 'export const' หน้าฟังก์ชันที่เหลือทั้งหมด
 export const getAllNews = async (req, res) => {
     try {
-        const news = await News.find({}).sort({ publishedAt: -1 });
+        // 👇 [แก้ไข] กรองเฉพาะข่าวที่ยังไม่ถูกลบ
+        const news = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
         res.json(news);
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
@@ -42,14 +41,18 @@ export const getNewsById = async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
-        const newsItem = await News.findById(id);
-        if (!newsItem) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
+        
+        // 👇 [แก้ไข] ค้นหาเฉพาะข่าวที่ยังไม่ถูกลบ
+        const newsItem = await News.findOne({ _id: id, isDeleted: false });
+
+        if (!newsItem) { return res.status(404).json({ message: 'ไม่พบข่าวนี้ (หรืออาจอยู่ในถังขยะ)' }); }
         res.json(newsItem);
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
     }
 };
 
+// (createNews ไม่ต้องแก้ไข)
 export const createNews = async (req, res) => {
     const { title, category, content } = req.body;
     const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
@@ -64,6 +67,8 @@ export const createNews = async (req, res) => {
     }
 };
 
+// (updateNews ไม่ต้องแก้ไข)
+// (การลบไฟล์เก่าใน 'update' ถูกต้องแล้ว เพราะคือการ 'แทนที่' ไม่ใช่การ 'ลบ')
 export const updateNews = async (req, res) => {
     try {
         const { id } = req.params;
@@ -93,23 +98,35 @@ export const updateNews = async (req, res) => {
     }
 };
 
+// --- 👇 [แก้ไขฟังก์ชันนี้ทั้งหมด] ---
 export const deleteNews = async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
         
-        const deletedNews = await News.findByIdAndDelete(id);
+        // 1. [เปลี่ยน] จาก 'ลบ' เป็น 'อัปเดต'
+        const updateInfo = {
+            isDeleted: true,
+            deletedAt: new Date()
+        };
+        const deletedNews = await News.findByIdAndUpdate(id, updateInfo);
+
         if (!deletedNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
 
+        // 2. [ลบออก] เราจะไม่ลบไฟล์จริง (fs.unlink)
+        //    เพื่อให้สามารถกู้คืนได้
+        /*
         if (deletedNews.imageUrl) {
-            // (โค้ดส่วนนี้จะทำงานได้เพราะเราแก้ __dirname แล้ว)
             const imagePath = path.join(__dirname, '../', deletedNews.imageUrl.substring(1));
             fs.unlink(imagePath, (err) => {
                 if (err) console.error(`ไม่สามารถลบไฟล์ข่าวได้: ${imagePath}`, err.message);
                 else console.log(`ลบไฟล์ข่าวสำเร็จ: ${imagePath}`);
             });
         }
-        res.json({ status: 'success', message: 'ลบข่าวสำเร็จ' });
+        */
+
+        // 3. [เปลี่ยน] ข้อความตอบกลับ
+        res.json({ status: 'success', message: 'ย้ายข่าวไปถังขยะแล้ว' });
     } catch (error) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
     }

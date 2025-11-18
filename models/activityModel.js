@@ -1,4 +1,4 @@
-// models/activityModel.js
+// models/activityModel.js (Updated for Trash Bin)
 import mongoose from "mongoose";
 
 const activitySchema = new mongoose.Schema({
@@ -6,6 +6,23 @@ const activitySchema = new mongoose.Schema({
   date: { type: Date, required: true },
   content: { type: String, required: true },
   imageUrl: { type: String },
+
+  // --- 👇 [เพิ่มส่วนนี้] ---
+  isDeleted: { 
+    type: Boolean, 
+    default: false,
+    index: true // (เพิ่ม index ช่วยให้ค้นหาเร็วขึ้น)
+  },
+  deletedAt: { 
+    type: Date, 
+    default: null 
+  }
+  // --- 👆 [สิ้นสุดส่วนที่เพิ่ม] ---
+},
+{
+  // 👇 [เพิ่มส่วนนี้]
+  // (เพิ่มฟิลด์ createdAt และ updatedAt ให้อัตโนมัติ)
+  timestamps: true 
 });
 
 export default mongoose.model("Activity", activitySchema);

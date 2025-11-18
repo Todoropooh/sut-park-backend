@@ -1,4 +1,5 @@
-// controllers/activityController.js
+// controllers/activityController.js (Updated for Soft Delete)
+
 import Activity from "../models/activityModel.js";
 import fs from "fs";
 import path from "path";
@@ -7,7 +8,8 @@ import mongoose from "mongoose";
 // Public
 export const getPublicActivities = async (req, res) => {
   try {
-    const activities = await Activity.find({}).sort({ date: -1 });
+    // 👇 [แก้ไข] กรองเฉพาะรายการที่ยังไม่ถูกลบ
+    const activities = await Activity.find({ isDeleted: false }).sort({ date: -1 });
     res.json(activities);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
@@ -17,7 +19,8 @@ export const getPublicActivities = async (req, res) => {
 // Admin
 export const getAllActivities = async (req, res) => {
   try {
-    const activities = await Activity.find({}).sort({ date: -1 });
+    // 👇 [แก้ไข] กรองเฉพาะรายการที่ยังไม่ถูกลบ
+    const activities = await Activity.find({ isDeleted: false }).sort({ date: -1 });
     res.json(activities);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
@@ -28,15 +31,20 @@ export const getActivityById = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "ID กิจกรรมไม่ถูกต้อง" });
-    const activityItem = await Activity.findById(id);
-    if (!activityItem) return res.status(404).json({ message: "ไม่พบกิจกรรมนี้" });
+    
+    // 👇 [แก้ไข] ตรวจสอบว่าถูกลบไปหรือยัง
+    const activityItem = await Activity.findOne({ _id: id, isDeleted: false });
+    
+    if (!activityItem) return res.status(404).json({ message: "ไม่พบกิจกรรมนี้ (หรืออาจอยู่ในถังขยะ)" });
     res.json(activityItem);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
 
+// ... (createActivity และ updateActivity เหมือนเดิมครับ) ...
 export const createActivity = async (req, res) => {
+  // (โค้ดเดิมของคุณถูกต้องแล้ว)
   try {
     const { title, date, content } = req.body;
     const imageUrlPath = req.file ? `/uploads/${req.file.filename}` : null;
@@ -51,6 +59,7 @@ export const createActivity = async (req, res) => {
 };
 
 export const updateActivity = async (req, res) => {
+  // (โค้ดเดิมของคุณถูกต้องแล้ว การลบไฟล์ใน 'update' คือการ 'แทนที่' ไม่ใช่การ 'ลบ')
   try {
     const { id } = req.params;
     const { title, date, content } = req.body;
@@ -81,22 +90,25 @@ export const updateActivity = async (req, res) => {
   }
 };
 
+// --- 👇 [แก้ไขฟังก์ชันนี้ทั้งหมด] ---
 export const deleteActivity = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "ID กิจกรรมไม่ถูกต้อง" });
 
-    const deletedActivity = await Activity.findByIdAndDelete(id);
+    // 1. [เปลี่ยน] จาก 'ลบ' เป็น 'อัปเดต'
+    const updateInfo = {
+      isDeleted: true,
+      deletedAt: new Date()
+    };
+    const deletedActivity = await Activity.findByIdAndUpdate(id, updateInfo);
+    
     if (!deletedActivity) return res.status(404).json({ message: "ไม่พบกิจกรรมนี้" });
 
-    if (deletedActivity.imageUrl) {
-      const imagePath = path.join(process.cwd(), deletedActivity.imageUrl.substring(1));
-      fs.unlink(imagePath, (err) => {
-        if (err) console.error(`ไม่สามารถลบไฟล์กิจกรรมได้: ${imagePath}`, err.message);
-        else console.log(`ลบไฟล์กิจกรรมสำเร็จ: ${imagePath}`);
-      });
-    }
-    res.json({ status: "success", message: "ลบกิจกรรมสำเร็จ" });
+    // 2. [ลบออก] เราจะไม่ลบไฟล์จริง (fs.unlink)
+    //    เพราะผู้ใช้ต้องกู้คืนได้
+
+    res.json({ status: "success", message: "ย้ายกิจกรรมไปถังขยะแล้ว" }); // (เปลี่ยนข้อความ)
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
