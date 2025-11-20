@@ -17,7 +17,7 @@ import * as bookingController from "./controllers/bookingController.js";
 import * as contactController from "./controllers/contactController.js";
 import * as mainController from "./controllers/mainController.js";
 import * as serviceItemController from "./controllers/serviceItemController.js";
-import * as folderController from "./controllers/folderController.js"; // (เพิ่ม import นี้ให้เผื่อ error)
+import * as folderController from "./controllers/folderController.js";
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
@@ -42,8 +42,7 @@ const host = "0.0.0.0";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ⭐️⭐️⭐️ [FIXED] Global CORS Configuration ⭐️⭐️⭐️
-// เปิดอนุญาตให้ทุก Origin (*) เข้าถึงได้ เพื่อแก้ปัญหา CORS Policy
+// ⭐️ GLOBAL CORS (อนุญาตทุกคน 100%)
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -52,9 +51,9 @@ app.use(cors({
 
 // Middleware
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // (แก้ path ให้ชัวร์ขึ้น)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --- Public Routes (ไม่ต้องใส่ cors() แยกแล้ว เพราะมี Global ด้านบน) ---
+// --- Public Routes ---
 app.get("/api/test", mainController.getApiTest);
 app.get("/public/news", newsController.getPublicNews);
 app.get("/public/activities", activityController.getPublicActivities);
@@ -67,7 +66,7 @@ app.post("/api/login", mainController.loginUser);
 // File serving
 app.use("/public/files", fileRoutes);
 
-// --- Admin Protected Routes (ใช้ Global CORS แต่ติด Auth Middleware) ---
+// --- Admin Protected Routes ---
 app.use("/api/dashboard", authenticateToken, isAdmin, dashboardRoutes);
 app.use("/api/news", authenticateToken, isAdmin, newsRoutes);
 app.use("/api/activities", authenticateToken, isAdmin, activityRoutes);
@@ -91,6 +90,4 @@ mongoose
   })
   .catch((error) => {
     console.error("❌ MongoDB connection error:", error.message);
-    
   });
-  
