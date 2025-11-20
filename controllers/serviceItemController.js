@@ -1,5 +1,3 @@
-// controllers/serviceItemController.js
-
 import ServiceItem from '../models/serviceItemModel.js';
 import fs from 'fs';
 import path from 'path';
@@ -31,20 +29,21 @@ export const getServiceItems = async (req, res) => {
 // --- Create ---
 export const createServiceItem = async (req, res) => {
   try {
-    // ⭐️ [แก้ไข] รับค่าฟิลด์ใหม่เข้ามาด้วย (startDate, endDate, rewardAmount)
-    const { title, description, link, startDate, endDate, rewardAmount } = req.body;
+    // ⭐️ รับค่าให้ครบ
+    const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
     
     const imageUrl = req.file ? `/${req.file.path.replace(/\\/g, "/")}` : null;
 
     const newService = new ServiceItem({
       title,
       description,
-      link,
       imageUrl,
-      // ⭐️ [แก้ไข] บันทึกลงฐานข้อมูล
-      startDate: startDate || null, // ถ้าไม่ส่งมาให้เป็น null
+      // ⭐️ บันทึกค่าลง DB
+      category: category || 'ทั่วไป',
+      link: link || '',
+      startDate: startDate || null,
       endDate: endDate || null,
-      rewardAmount: rewardAmount || 0, // ถ้าไม่ส่งมาให้เป็น 0
+      rewardAmount: rewardAmount || 0,
     });
 
     await newService.save();
@@ -59,8 +58,8 @@ export const createServiceItem = async (req, res) => {
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    // ⭐️ [แก้ไข] รับค่าฟิลด์ใหม่เข้ามาด้วย
-    const { title, description, link, startDate, endDate, rewardAmount } = req.body;
+    // ⭐️ รับค่าให้ครบ
+    const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
     
     const oldService = await ServiceItem.findById(id);
     if (!oldService) return res.status(404).json({ message: "ไม่พบบริการ" });
@@ -68,13 +67,15 @@ export const updateServiceItem = async (req, res) => {
     const updateData = { 
       title, 
       description, 
-      link,
-      // ⭐️ [แก้ไข] อัปเดตค่าใหม่ลงฐานข้อมูล
+      // ⭐️ อัปเดตค่า
+      category: category || 'ทั่วไป',
+      link: link || '',
       startDate: startDate || null,
       endDate: endDate || null,
       rewardAmount: rewardAmount || 0,
     };
 
+    // จัดการรูปภาพ
     if (req.file) {
       updateData.imageUrl = `/${req.file.path.replace(/\\/g, "/")}`;
 

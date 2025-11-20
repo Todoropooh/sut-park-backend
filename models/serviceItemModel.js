@@ -1,17 +1,18 @@
-// models/serviceItemModel.js (แก้ไขแล้ว)
-
 import mongoose from "mongoose";
 
 const serviceItemSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  targetAudience: [String],
-  imageUrl: String,
-  isActive: { type: Boolean, default: true },
+  title: { type: String, required: true },
+  description: { type: String },
+  imageUrl: { type: String },
   
-  // ⭐️⭐️⭐️ (เพิ่ม 2 บรรทัดนี้ครับ) ⭐️⭐️⭐️
-  startDate: { type: Date, default: null }, // วันที่เริ่ม
-  linkUrl: { type: String, default: null }  // ลิงก์
+  // ⭐️ ฟิลด์ใหม่ที่เพิ่มเข้ามา
+  category: { type: String, default: 'ทั่วไป' }, // หมวดหมู่
+  link: { type: String },                        // ลิงก์ภายนอก
+  startDate: { type: Date },                     // วันเริ่ม
+  endDate: { type: Date },                       // วันจบ
+  rewardAmount: { type: Number, default: 0 },    // เงินรางวัล
+
+  createdAt: { type: Date, default: Date.now },
 });
 
 export default mongoose.model("ServiceItem", serviceItemSchema);
