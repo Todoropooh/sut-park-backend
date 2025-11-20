@@ -31,17 +31,20 @@ export const getServiceItems = async (req, res) => {
 // --- Create ---
 export const createServiceItem = async (req, res) => {
   try {
-    const { title, description, link } = req.body;
+    // ⭐️ [แก้ไข] รับค่าฟิลด์ใหม่เข้ามาด้วย (startDate, endDate, rewardAmount)
+    const { title, description, link, startDate, endDate, rewardAmount } = req.body;
     
-    // ⭐️ ถ้ามีไฟล์ ให้เก็บ Path (ระวังเรื่อง slash / หรือ \)
-    // บน Windows path อาจจะเป็น uploads\services\file.jpg ต้องแปลงเป็น /
     const imageUrl = req.file ? `/${req.file.path.replace(/\\/g, "/")}` : null;
 
     const newService = new ServiceItem({
       title,
       description,
       link,
-      imageUrl, 
+      imageUrl,
+      // ⭐️ [แก้ไข] บันทึกลงฐานข้อมูล
+      startDate: startDate || null, // ถ้าไม่ส่งมาให้เป็น null
+      endDate: endDate || null,
+      rewardAmount: rewardAmount || 0, // ถ้าไม่ส่งมาให้เป็น 0
     });
 
     await newService.save();
@@ -56,20 +59,26 @@ export const createServiceItem = async (req, res) => {
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, link } = req.body;
+    // ⭐️ [แก้ไข] รับค่าฟิลด์ใหม่เข้ามาด้วย
+    const { title, description, link, startDate, endDate, rewardAmount } = req.body;
     
     const oldService = await ServiceItem.findById(id);
     if (!oldService) return res.status(404).json({ message: "ไม่พบบริการ" });
 
-    const updateData = { title, description, link };
+    const updateData = { 
+      title, 
+      description, 
+      link,
+      // ⭐️ [แก้ไข] อัปเดตค่าใหม่ลงฐานข้อมูล
+      startDate: startDate || null,
+      endDate: endDate || null,
+      rewardAmount: rewardAmount || 0,
+    };
 
-    // ⭐️ ถ้ามีการอัปโหลดไฟล์ใหม่
     if (req.file) {
       updateData.imageUrl = `/${req.file.path.replace(/\\/g, "/")}`;
 
-      // ลบไฟล์เก่าทิ้ง
       if (oldService.imageUrl) {
-        // ตัด '/' ตัวแรกออก เพื่อให้ path ถูกต้องเมื่อใช้กับ fs (เช่น uploads/services/...)
         const oldPathRelative = oldService.imageUrl.startsWith('/') ? oldService.imageUrl.substring(1) : oldService.imageUrl;
         const oldPathAbsolute = path.join(process.cwd(), oldPathRelative);
 
