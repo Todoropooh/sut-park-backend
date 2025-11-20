@@ -1,85 +1,114 @@
-// controllers/serviceItemController.js (แก้ไขแล้ว)
+// controllers/serviceItemController.js
 
-import ServiceItem from "../models/serviceItemModel.js";
+import ServiceItem from '../models/serviceItemModel.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-export const getServiceItems = async (req, res) => {
-  try {
-    const items = await ServiceItem.find();
-    res.json(items);
-  } catch (err) {
-    console.error("Error in getServiceItems:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-};
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// --- Get All (Public) ---
 export const getPublicServiceItems = async (req, res) => {
   try {
-    const items = await ServiceItem.find({ isActive: true });
-    res.json(items);
-  } catch (err) {
-    console.error("Error in getPublicServiceItems:", err);
-    res.status(500).json({ error: "Server error" });
+    const services = await ServiceItem.find().sort({ createdAt: -1 });
+    res.json(services);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
+// --- Get All (Admin) ---
+export const getServiceItems = async (req, res) => {
+    try {
+      const services = await ServiceItem.find().sort({ createdAt: -1 });
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+// --- Create ---
 export const createServiceItem = async (req, res) => {
   try {
-    // ⭐️ (แก้ไข) 1. ดึงข้อมูลใหม่จาก body
-    const { title, description, targetAudience, startDate, linkUrl } = req.body; 
+    const { title, description, link } = req.body;
+    
+    // ⭐️ ถ้ามีไฟล์ ให้เก็บ Path (ระวังเรื่อง slash / หรือ \)
+    // บน Windows path อาจจะเป็น uploads\services\file.jpg ต้องแปลงเป็น /
+    const imageUrl = req.file ? `/${req.file.path.replace(/\\/g, "/")}` : null;
 
-    const item = new ServiceItem({
+    const newService = new ServiceItem({
       title,
       description,
-      targetAudience: targetAudience || [],
-      imageUrl: req.file ? `/uploads/services/${req.file.filename}` : null,
-      
-      // ⭐️ (แก้ไข) 2. เพิ่มข้อมูลใหม่
-      startDate: startDate || null,
-      linkUrl: linkUrl || null
+      link,
+      imageUrl, 
     });
 
-    await item.save();
-    res.json(item);
-  } catch (err) {
-    console.error("Error in createServiceItem:", err);
-    res.status(500).json({ error: err.message });
+    await newService.save();
+    res.status(201).json(newService);
+  } catch (error) {
+    console.error("Error creating service:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการสร้างบริการ" });
   }
 };
 
+// --- Update ---
 export const updateServiceItem = async (req, res) => {
   try {
-    // ⭐️ (แก้ไข) 1. ดึงข้อมูลใหม่จาก body
-    const { title, description, targetAudience, startDate, linkUrl } = req.body;
+    const { id } = req.params;
+    const { title, description, link } = req.body;
+    
+    const oldService = await ServiceItem.findById(id);
+    if (!oldService) return res.status(404).json({ message: "ไม่พบบริการ" });
 
-    const updateData = {
-      title,
-      description,
-      targetAudience: targetAudience || [],
+    const updateData = { title, description, link };
 
-      // ⭐️ (แก้ไข) 2. เพิ่มข้อมูลใหม่
-      startDate: startDate || null,
-      linkUrl: linkUrl || null
-    };
-
+    // ⭐️ ถ้ามีการอัปโหลดไฟล์ใหม่
     if (req.file) {
-      updateData.imageUrl = `/uploads/services/${req.file.filename}`;
+      updateData.imageUrl = `/${req.file.path.replace(/\\/g, "/")}`;
+
+      // ลบไฟล์เก่าทิ้ง
+      if (oldService.imageUrl) {
+        // ตัด '/' ตัวแรกออก เพื่อให้ path ถูกต้องเมื่อใช้กับ fs (เช่น uploads/services/...)
+        const oldPathRelative = oldService.imageUrl.startsWith('/') ? oldService.imageUrl.substring(1) : oldService.imageUrl;
+        const oldPathAbsolute = path.join(process.cwd(), oldPathRelative);
+
+        if (fs.existsSync(oldPathAbsolute)) { 
+             fs.unlink(oldPathAbsolute, (err) => {
+                if(err) console.log("Failed to delete old image:", err);
+             }); 
+        }
+      }
     }
 
-    const updated = await ServiceItem.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const updatedService = await ServiceItem.findByIdAndUpdate(id, updateData, { new: true });
+    res.json(updatedService);
 
-    res.json(updated);
-  } catch (err) {
-    console.error("Error in updateServiceItem:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("Error updating service:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการแก้ไข" });
   }
 };
 
+// --- Delete ---
 export const deleteServiceItem = async (req, res) => {
   try {
-    await ServiceItem.findByIdAndDelete(req.params.id);
-    res.json({ message: "Item deleted" });
-  } catch (err) {
-    console.error("Error in deleteServiceItem:", err);
-    res.status(500).json({ error: err.message });
+    const { id } = req.params;
+    const service = await ServiceItem.findByIdAndDelete(id);
+    
+    if (!service) return res.status(404).json({ message: "ไม่พบบริการ" });
+
+    if (service.imageUrl) {
+      const oldPathRelative = service.imageUrl.startsWith('/') ? service.imageUrl.substring(1) : service.imageUrl;
+      const filePath = path.join(process.cwd(), oldPathRelative);
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlink(filePath, () => {});
+      }
+    }
+
+    res.json({ message: "ลบบริการสำเร็จ" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
