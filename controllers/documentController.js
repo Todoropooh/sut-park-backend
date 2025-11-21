@@ -1,6 +1,6 @@
-// controllers/serviceItemController.js
+// controllers/documentController.js
 
-import ServiceItem from '../models/serviceItemModel.js';
+import Document from '../models/documentModel.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,132 +8,105 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- Get All (Public) ---
-export const getPublicServiceItems = async (req, res) => {
+// --- 1. ⭐️ [ต้องมี] Upload Documents (Multiple Files) ---
+export const uploadDocument = async (req, res) => {
   try {
-    // ⭐️ [FIXED] กรองเอาเฉพาะที่ยังไม่ถูกลบ (isDeleted: false)
-    const services = await ServiceItem.find({ isDeleted: false }).sort({ createdAt: -1 });
-    res.json(services);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// --- Get All (Admin) ---
-export const getServiceItems = async (req, res) => {
-    try {
-      // ⭐️ [FIXED] กรองเอาเฉพาะที่ยังไม่ถูกลบ
-      const services = await ServiceItem.find({ isDeleted: false }).sort({ createdAt: -1 });
-      res.json(services);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+    // ตรวจสอบว่ามีไฟล์ส่งมาไหม
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์" });
     }
-  };
 
-// --- Create ---
-export const createServiceItem = async (req, res) => {
-  try {
-    const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
-    
-    const imageUrl = req.file ? `/${req.file.path.replace(/\\/g, "/")}` : null;
+    const { folderId } = req.body;
+    // แปลง folderId: ถ้าเป็น '0-0' หรือไม่มี ให้เป็น null (Root)
+    const parentFolderId = (folderId === '0-0' || !folderId) ? null : folderId;
 
-    const newService = new ServiceItem({
-      title,
-      description,
-      imageUrl,
-      category: category || 'ทั่วไป',
-      link: link || '',
-      startDate: startDate || null,
-      endDate: endDate || null,
-      rewardAmount: rewardAmount || 0,
-      // ⭐️ เพิ่มค่าเริ่มต้น
-      isDeleted: false,
-      deletedAt: null
+    const savedDocuments = [];
+
+    for (const file of req.files) {
+      const relativePath = `/${file.path.replace(/\\/g, "/")}`;
+
+      // แปลงชื่อไฟล์ต้นฉบับเป็น UTF-8 (แก้ปัญหาภาษาไทย)
+      const safeOriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+      const newDoc = new Document({
+        originalFilename: safeOriginalName,
+        storedFilename: file.filename,
+        fileType: file.mimetype,
+        size: file.size,
+        path: relativePath,
+        folderId: parentFolderId,
+        owner: req.user ? req.user.id : null,
+        isDeleted: false,
+        deletedAt: null
+      });
+
+      await newDoc.save();
+      savedDocuments.push(newDoc);
+    }
+
+    res.status(201).json({ 
+      message: `อัปโหลดสำเร็จ ${savedDocuments.length} ไฟล์`, 
+      documents: savedDocuments 
     });
 
-    await newService.save();
-    res.status(201).json(newService);
   } catch (error) {
-    console.error("Error creating service:", error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในการสร้างบริการ" });
+    console.error("Upload Error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลด" });
   }
 };
 
-// --- Update ---
-export const updateServiceItem = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
-    
-    const oldService = await ServiceItem.findById(id);
-    if (!oldService) return res.status(404).json({ message: "ไม่พบบริการ" });
-
-    const updateData = { 
-      title, 
-      description, 
-      link: link || '',
-      category: category || 'ทั่วไป',
-      startDate: startDate || null,
-      endDate: endDate || null,
-      rewardAmount: rewardAmount || 0,
-    };
-
-    if (req.file) {
-      updateData.imageUrl = `/${req.file.path.replace(/\\/g, "/")}`;
-
-      // ลบไฟล์เก่า (กรณีแทนที่ไฟล์)
-      if (oldService.imageUrl) {
-        const oldPathRelative = oldService.imageUrl.startsWith('/') ? oldService.imageUrl.substring(1) : oldService.imageUrl;
-        const oldPathAbsolute = path.join(process.cwd(), oldPathRelative);
-
-        if (fs.existsSync(oldPathAbsolute)) { 
-             fs.unlink(oldPathAbsolute, (err) => {
-                if(err) console.log("Failed to delete old image:", err);
-             }); 
-        }
-      }
-    }
-
-    const updatedService = await ServiceItem.findByIdAndUpdate(id, updateData, { new: true });
-    res.json(updatedService);
-
-  } catch (error) {
-    console.error("Error updating service:", error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในการแก้ไข" });
-  }
-};
-
-// --- Delete (Soft Delete) ---
-export const deleteServiceItem = async (req, res) => {
+// --- 2. Delete Document (Soft Delete) ---
+export const deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // ⭐️ [FIXED] เปลี่ยนเป็น Soft Delete (ย้ายไปถังขยะ)
-    const updatedService = await ServiceItem.findByIdAndUpdate(
-      id, 
+    const updatedDoc = await Document.findByIdAndUpdate(
+      id,
       {
-        isDeleted: true,        // ปักธงว่าลบ
-        deletedAt: new Date()   // ลงเวลา
+        isDeleted: true,        // ปักธงว่าลบแล้ว
+        deletedAt: new Date()   // ลงเวลาที่ลบ
       },
       { new: true }
     );
-    
-    if (!updatedService) return res.status(404).json({ message: "ไม่พบบริการ" });
 
-    // ❌ [ปิดการลบไฟล์จริง] เพื่อให้กู้คืนได้
-    /*
-    if (service.imageUrl) {
-      const oldPathRelative = service.imageUrl.startsWith('/') ? service.imageUrl.substring(1) : service.imageUrl;
-      const filePath = path.join(process.cwd(), oldPathRelative);
-      if (fs.existsSync(filePath)) {
-        fs.unlink(filePath, () => {});
-      }
+    if (!updatedDoc) {
+      return res.status(404).json({ message: "ไม่พบไฟล์" });
     }
-    */
 
-    res.json({ message: "ย้ายบริการไปถังขยะแล้ว" }); // เปลี่ยนข้อความตอบกลับ
+    res.json({ message: "ย้ายไฟล์ไปถังขยะแล้ว" });
 
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการลบไฟล์" });
+  }
+};
+
+// --- 3. Get All Documents (Active Only) ---
+export const getAllDocuments = async (req, res) => {
+  try {
+    const docs = await Document.find({ isDeleted: false }).sort({ createdAt: -1 });
+    res.json(docs);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// --- 4. Download Document ---
+export const downloadDocument = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const doc = await Document.findById(id); 
+        if (!doc) return res.status(404).json({ message: "ไม่พบไฟล์" });
+
+        const relativePath = doc.path.startsWith('/') ? doc.path.substring(1) : doc.path;
+        const filePath = path.join(process.cwd(), relativePath);
+
+        if (fs.existsSync(filePath)) {
+            res.download(filePath, doc.originalFilename);
+        } else {
+            res.status(404).json({ message: "ไฟล์ต้นฉบับหายไปจาก Server" });
+        }
+    } catch (error) {
+        res.status(500).json({ message: "ดาวน์โหลดล้มเหลว" });
+    }
 };
