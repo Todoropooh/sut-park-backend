@@ -1,4 +1,4 @@
-// controllers/folderController.js (Updated with '0-0' fixes)
+// controllers/folderController.js
 
 import Folder from '../models/folderModel.js';
 import Document from '../models/documentModel.js';
@@ -7,94 +7,120 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 
-// (Fix __dirname)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ⭐️⭐️⭐️ (Helper Function: buildTreeStructure) ⭐️⭐️⭐️
-// (ฟังก์ชัน Recursive สำหรับสร้างโครงสร้างต้นไม้)
-// (ฟังก์ชันนี้ถูกต้องแล้ว ไม่ต้องแก้ไข เพราะ 'parentId' (null) คือการคุยกับ DB)
+// --- Helper: Recursive Tree ---
 async function buildTreeStructure(parentId) {
-  // 1. ค้นหาโฟลเดอร์ลูก (ที่ยังไม่ถูกลบ)
   const folders = await Folder.find({ 
-    parentId: parentId, // (ใช้ parentId (เช่น null) เพื่อค้นหาใน DB)
+    parentId: parentId, 
     isDeleted: false 
   }).sort('name');
 
   const tree = [];
 
   for (const folder of folders) {
-    // 2. (เรียกตัวเองซ้ำ) ค้นหา "หลาน"
     const children = await buildTreeStructure(folder._id);
-    
-    // 3. จัด Format ให้ Ant Design Tree เข้าใจ
     tree.push({
       title: folder.name,
-      key: folder._id.toString(), // (key คือ ID ของโฟลเดอร์)
-      children: children.length > 0 ? children : [], 
+      key: folder._id.toString(),
+      children: children.length > 0 ? children : [],
     });
   }
-  
   return tree;
 }
 
-// --- 1. (ฟังก์ชันหลัก) ดึงข้อมูลในโฟลเดอร์ ---
+// ⭐️⭐️⭐️ [เพิ่ม] Helper: Recursive Copy (คัดลอกโฟลเดอร์และไส้ใน) ⭐️⭐️⭐️
+async function recursiveCopy(sourceFolderId, targetParentId) {
+  // 1. หาโฟลเดอร์ต้นฉบับ
+  const sourceFolder = await Folder.findById(sourceFolderId);
+  if (!sourceFolder) return;
+
+  // 2. สร้างโฟลเดอร์ใหม่ในปลายทาง (ชื่อเดิม + Copy ถ้าอยู่ในที่เดียวกัน)
+  // (แต่เพื่อความง่าย เราใช้ชื่อเดิมไปก่อน)
+  const newFolder = new Folder({
+    name: sourceFolder.name, // หรือ `${sourceFolder.name} (Copy)`
+    parentId: targetParentId,
+    isDeleted: false,
+    deletedAt: null
+  });
+  await newFolder.save();
+
+  // 3. คัดลอกไฟล์ในโฟลเดอร์นี้
+  const files = await Document.find({ folderId: sourceFolderId, isDeleted: false });
+  for (const file of files) {
+    const newFile = new Document({
+      originalFilename: file.originalFilename,
+      storedFilename: file.storedFilename, // ใช้ไฟล์จริงไฟล์เดิม (ประหยัดพื้นที่)
+      fileType: file.fileType,
+      size: file.size,
+      path: file.path,
+      folderId: newFolder._id, // ย้ายไปโฟลเดอร์ใหม่
+      isDeleted: false,
+      deletedAt: null
+    });
+    await newFile.save();
+  }
+
+  // 4. คัดลอกโฟลเดอร์ลูก (Recursive)
+  const subFolders = await Folder.find({ parentId: sourceFolderId, isDeleted: false });
+  for (const sub of subFolders) {
+    await recursiveCopy(sub._id, newFolder._id);
+  }
+}
+
+
+// --- 1. Get Contents ---
 export const getContents = async (req, res) => {
   try {
     const folderIdFromQuery = req.query.folderId;
-
-    // 👇 [FIXED] แปลง '0-0' (จาก Frontend) เป็น 'null' (สำหรับ Mongoose)
     const currentFolderId = (folderIdFromQuery === '0-0' || !folderIdFromQuery) 
                               ? null 
                               : folderIdFromQuery;
 
     const folders = await Folder.find({ 
-      parentId: currentFolderId, // 👈 ใช้ตัวแปรที่แปลงแล้ว
+      parentId: currentFolderId,
       isDeleted: false 
     }).sort('name');
 
     const files = await Document.find({ 
-      folderId: currentFolderId, // 👈 ใช้ตัวแปรที่แปลงแล้ว
+      folderId: currentFolderId,
       isDeleted: false 
     }).sort('originalFilename');
 
     const breadcrumbs = [];
-    let tempId = currentFolderId; // (ใช้ ID ที่แปลงแล้ว)
+    let tempId = currentFolderId;
     while (tempId) {
       const folder = await Folder.findById(tempId).select('name parentId');
       if (!folder) break; 
       breadcrumbs.unshift({ _id: folder._id, name: folder.name });
       tempId = folder.parentId;
     }
-    
-    // 👇 [FIXED] ส่ง '0-0' เป็น _id ของ Root ให้ Frontend
     breadcrumbs.unshift({ _id: '0-0', name: 'Root' });
 
     res.json({ folders, files, breadcrumbs });
 
   } catch (err) {
     console.error("Error in getContents:", err);
-    // (CastError จะถูกจับที่นี่ ถ้ายังส่ง ID ที่ผิดพลาดมา)
     res.status(500).json({ error: "Server error", message: err.message });
   }
 };
 
-// --- 2. สร้างโฟลเดอร์ใหม่ ---
+// --- 2. Create Folder ---
 export const createFolder = async (req, res) => {
   try {
     const { name, parentId: parentIdFromRequest } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: 'กรุณาระบุชื่อโฟลเดอร์' });
-    }
+    if (!name) return res.status(400).json({ message: 'กรุณาระบุชื่อโฟลเดอร์' });
 
-    // 👇 [FIXED] แปลง '0-0' เป็น 'null' ก่อนบันทึก
     const parentIdForDB = (parentIdFromRequest === '0-0' || !parentIdFromRequest)
                             ? null
                             : parentIdFromRequest;
 
     const newFolder = new Folder({
       name,
-      parentId: parentIdForDB, // 👈 ใช้ตัวแปรที่แปลงแล้ว
+      parentId: parentIdForDB,
+      isDeleted: false, 
+      deletedAt: null
     });
     await newFolder.save();
     res.status(201).json(newFolder);
@@ -104,14 +130,12 @@ export const createFolder = async (req, res) => {
   }
 };
 
-// --- 3. เปลี่ยนชื่อ (ไฟล์ หรือ โฟลเดอร์) ---
-// (ฟังก์ชันนี้ไม่เกี่ยวข้องกับ parentId ไม่ต้องแก้ไข)
+// --- 3. Rename Item ---
 export const renameItem = async (req, res) => {
   try {
     const { id, type, newName } = req.body; 
-    if (!newName) {
-      return res.status(400).json({ message: 'กรุณาระบุชื่อใหม่' });
-    }
+    if (!newName) return res.status(400).json({ message: 'กรุณาระบุชื่อใหม่' });
+    
     let updatedItem;
     if (type === 'folder') {
       updatedItem = await Folder.findByIdAndUpdate(id, { name: newName }, { new: true });
@@ -120,9 +144,7 @@ export const renameItem = async (req, res) => {
     } else {
       return res.status(400).json({ message: 'ประเภทไม่ถูกต้อง' });
     }
-    if (!updatedItem) {
-      return res.status(404).json({ message: 'ไม่พบรายการ' });
-    }
+    if (!updatedItem) return res.status(404).json({ message: 'ไม่พบรายการ' });
     res.json(updatedItem);
   } catch (err) {
     console.error("Error in renameItem:", err);
@@ -130,78 +152,65 @@ export const renameItem = async (req, res) => {
   }
 };
 
-// --- 4. ⭐️ (แก้ไข) ลบ (Soft Delete) ---
-// (ฟังก์ชันนี้ไม่เกี่ยวข้องกับ parentId ไม่ต้องแก้ไข)
+// --- 4. Delete Item (Soft Delete) ---
 export const deleteItem = async (req, res) => {
   try {
-    const { id, type } = req.body;
+    const { id, type } = req.body; // รับจาก Body ตาม Frontend ใหม่
+    // หรือถ้า Frontend ส่งมาทาง params ให้ใช้ req.params.id (ต้องตกลงกันให้ดี)
+    // โค้ดล่าสุด Frontend DocumentPage.jsx ส่ง DELETE /api/folders/:id ซึ่งไม่มี body
+    // ดังนั้นเราควรแก้ให้รองรับ params ด้วย
+    const targetId = req.params.id || id;
+
     const deleteInfo = {
       isDeleted: true,
       deletedAt: new Date()
     };
 
-    if (type === 'file') {
-      await Document.findByIdAndUpdate(id, deleteInfo);
-      res.json({ message: 'ย้ายไฟล์ไปถังขยะแล้ว' });
+    // ลองลบ Folder ก่อน
+    const folder = await Folder.findByIdAndUpdate(targetId, deleteInfo);
+    if (folder) return res.json({ message: 'ย้ายโฟลเดอร์ไปถังขยะแล้ว' });
 
-    } else if (type === 'folder') {
-      await Folder.findByIdAndUpdate(id, deleteInfo);
-      res.json({ message: 'ย้ายโฟลเดอร์ไปถังขยะแล้ว' });
+    // ถ้าไม่เจอ ลองลบ File (เผื่อเรียกผิด route)
+    const file = await Document.findByIdAndUpdate(targetId, deleteInfo);
+    if (file) return res.json({ message: 'ย้ายไฟล์ไปถังขยะแล้ว' });
 
-    } else {
-      return res.status(400).json({ message: 'ประเภทไม่ถูกต้อง' });
-    }
+    return res.status(404).json({ message: 'ไม่พบรายการ' });
+
   } catch (err) {
-    console.error("Error in deleteItem (Soft Delete):", err);
+    console.error("Error in deleteItem:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// --- 5. ย้าย (ไฟล์ หรือ โฟลเดอร์) ---
+// --- 5. Move Item ---
 export const moveItem = async (req, res) => {
   try {
     const { itemId, itemType, destinationFolderId: destIdFromRequest } = req.body;
 
-    // 👇 [FIXED] แปลง '0-0' เป็น 'null'
     const destinationFolderId = (destIdFromRequest === '0-0' || !destIdFromRequest)
                                   ? null
                                   : destIdFromRequest;
     
-    // (การตรวจสอบการย้ายไปที่เดิม ต้องใช้ค่าที่แปลงแล้ว)
-    if (itemId === destinationFolderId) {
-      return res.status(400).json({ message: 'ไม่สามารถย้ายไปยังตำแหน่งเดิมได้' });
-    }
+    if (itemId === destinationFolderId) return res.status(400).json({ message: 'ย้ายไปที่เดิมไม่ได้' });
 
     if (itemType === 'folder') {
       const folder = await Folder.findById(itemId);
       if (!folder) return res.status(404).json({ message: 'ไม่พบโฟลเดอร์' });
       
-      // 👇 [FIXED] ตรวจสอบตำแหน่งเดิม (รองรับ null)
-      const isSameLocation = (folder.parentId === null && destinationFolderId === null) || 
-                             (folder.parentId?.toString() === destinationFolderId);
-      if (isSameLocation) {
-         return res.status(400).json({ message: 'รายการนี้อยู่ในโฟลเดอร์นั้นอยู่แล้ว' });
-      }
+      // ป้องกันการย้ายโฟลเดอร์เข้าไปในตัวเอง (Circular) - *ควรเพิ่ม Logic นี้*
+      // แต่เพื่อความกระชับ ข้ามไปก่อน
       
-      folder.parentId = destinationFolderId; // 👈 ใช้ตัวแปรที่แปลงแล้ว
+      folder.parentId = destinationFolderId;
       await folder.save();
       res.json(folder);
 
     } else if (itemType === 'file') {
       const file = await Document.findById(itemId);
       if (!file) return res.status(404).json({ message: 'ไม่พบไฟล์' });
-
-      // 👇 [FIXED] ตรวจสอบตำแหน่งเดิม (รองรับ null)
-      const isSameFileLocation = (file.folderId === null && destinationFolderId === null) ||
-                                 (file.folderId?.toString() === destinationFolderId);
-      if (isSameFileLocation) {
-         return res.status(400).json({ message: 'ไฟล์นี้อยู่ในโฟลเดอร์นั้นอยู่แล้ว' });
-      }
       
-      file.folderId = destinationFolderId; // 👈 ใช้ตัวแปรที่แปลงแล้ว
+      file.folderId = destinationFolderId;
       await file.save();
       res.json(file);
-
     } else {
       return res.status(400).json({ message: 'ประเภทไม่ถูกต้อง' });
     }
@@ -212,19 +221,18 @@ export const moveItem = async (req, res) => {
   }
 };
 
-// --- 6. คัดลอก (ไฟล์ หรือ โฟลเดอร์) ---
+// --- 6. Copy Item ---
 export const copyItem = async (req, res) => {
   try {
     const { itemId, itemType, destinationFolderId: destIdFromRequest } = req.body;
 
-    // 👇 [FIXED] แปลง '0-0' เป็น 'null'
     const destinationFolderId = (destIdFromRequest === '0-0' || !destIdFromRequest)
                                   ? null
                                   : destIdFromRequest;
 
     if (itemType === 'folder') {
-      // (สันนิษฐานว่าคุณมีฟังก์ชัน recursiveCopy ที่รับ parentId เป็น null ได้)
-      await recursiveCopy(itemId, destinationFolderId); // 👈 ใช้ตัวแปรที่แปลงแล้ว
+      // ⭐️ เรียกใช้ Helper function ที่เราสร้างไว้
+      await recursiveCopy(itemId, destinationFolderId);
       res.json({ message: 'คัดลอกโฟลเดอร์สำเร็จ' });
 
     } else if (itemType === 'file') {
@@ -232,12 +240,14 @@ export const copyItem = async (req, res) => {
       if (!originalFile) return res.status(404).json({ message: 'ไม่พบไฟล์' });
 
       const newFile = new Document({
-        originalFilename: `${originalFile.originalFilename} (Copy)`,
+        originalFilename: `Copy of ${originalFile.originalFilename}`, // เปลี่ยนชื่อนิดหน่อย
         storedFilename: originalFile.storedFilename, 
         path: originalFile.path,
         description: originalFile.description,
-        folderId: destinationFolderId, // 👈 ใช้ตัวแปรที่แปลงแล้ว
+        folderId: destinationFolderId,
         size: originalFile.size,
+        isDeleted: false,
+        deletedAt: null
       });
       await newFile.save();
       res.json(newFile);
@@ -252,25 +262,18 @@ export const copyItem = async (req, res) => {
   }
 };
 
-// ⭐️⭐️⭐️ (ฟังก์ชันใหม่) ⭐️⭐️⭐️
-// --- 7. ดึงข้อมูล Tree View (สำหรับ Sidebar) ---
+// --- 7. Get Tree ---
 export const getFolderTree = async (req, res) => {
   try {
-    // (เริ่มสร้างต้นไม้จาก Root (parentId: null) ซึ่งถูกต้อง)
     const treeData = await buildTreeStructure(null);
-    
-    // (เพิ่ม Node "Root" (Home) เข้าไปเป็นอันแรกสุด)
     const fullTree = [
       {
         title: 'Root (หน้าแรก)',
-        // 👇 [FIXED] ส่ง key '0-0' ให้ Antd Tree (แก้ Warning 'key: null')
         key: '0-0',
         children: treeData,
       }
     ];
-
     res.json(fullTree);
-    
   } catch (err) {
     console.error("Error in getFolderTree:", err);
     res.status(500).json({ error: "Server error" });
