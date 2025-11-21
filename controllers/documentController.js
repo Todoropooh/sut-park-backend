@@ -1,112 +1,120 @@
-// controllers/documentController.js (แก้ไข Typo แล้ว)
+// controllers/documentController.js
 
 import Document from '../models/documentModel.js';
 import fs from 'fs';
 import path from 'path';
-import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 
-// (Fix __dirname)
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename); // ⭐️ (แก้ไข) นี่คือบรรทัดที่แก้ครับ
+const __dirname = path.dirname(__filename);
 
-// --- 1. (แก้ไข) อัปเดตฟังก์ชัน Upload ---
+// --- 1. Upload Documents (รองรับ Multiple Files) ---
 export const uploadDocument = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'ไม่มีไฟล์ถูกอัปโหลด' });
+    // ตรวจสอบว่ามีไฟล์ส่งมาไหม
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์" });
     }
-    
-    const { description, folderId } = req.body;
-    const { originalname, filename, size } = req.file;
 
-    const fileUrlPath = `/uploads/documents/${filename}`;
+    const { folderId } = req.body;
     
-    const newDocument = new Document({
-      originalFilename: Buffer.from(originalname, 'latin1').toString('utf8'), 
-      storedFilename: filename,
-      path: fileUrlPath, 
-      description: description || 'ไม่มีคำอธิบาย',
-      folderId: folderId || null, 
-      size: size || 0,
-    });
+    // แปลง folderId: ถ้าเป็น '0-0' หรือไม่มี ให้เป็น null (Root)
+    const parentFolderId = (folderId === '0-0' || !folderId) ? null : folderId;
 
-    await newDocument.save();
+    const savedDocuments = [];
+
+    // วนลูปไฟล์ทั้งหมดที่ส่งมา
+    for (const file of req.files) {
+      // สร้าง Path สำหรับเก็บใน DB (ตัดส่วน Local path ออกให้เหลือ /uploads/...)
+      // Windows path fix: replace backslashes
+      const relativePath = `/${file.path.replace(/\\/g, "/")}`;
+
+      const newDoc = new Document({
+        originalFilename: file.originalname,
+        storedFilename: file.filename,
+        fileType: file.mimetype,
+        size: file.size,
+        path: relativePath,
+        folderId: parentFolderId, // เชื่อมกับ Folder
+        owner: req.user ? req.user.id : null, // ถ้ามี Auth
+      });
+
+      await newDoc.save();
+      savedDocuments.push(newDoc);
+    }
+
     res.status(201).json({ 
-      status: 'success',
-      message: 'อัปโหลดไฟล์และบันทึกข้อมูลสำเร็จ!', 
-      document: newDocument 
+      message: `อัปโหลดสำเร็จ ${savedDocuments.length} ไฟล์`, 
+      documents: savedDocuments 
     });
 
   } catch (error) {
-    console.error('เกิดข้อผิดพลาดในการอัปโหลดเอกสาร:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Upload Error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลด" });
   }
 };
 
-// --- (ฟังก์ชันที่เหลือ - เหมือนเดิม) ---
-
-export const getAllDocuments = async (req, res) => {
-  try {
-    const documents = await Document.find().sort({ uploadedAt: -1 });
-    res.json(documents);
-  } catch (error) {
-    console.error('เกิดข้อผิดพลาดในการดึงข้อมูลเอกสาร:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
+// --- 2. Delete Document ---
 export const deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID เอกสารไม่ถูกต้อง' }); }
+    const doc = await Document.findById(id);
 
-    const document = await Document.findById(id);
-    if (!document) {
-      return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
+    if (!doc) {
+      return res.status(404).json({ message: "ไม่พบไฟล์" });
     }
 
-    const filePath = path.join(__dirname, '../', document.path.substring(1)); 
+    // ลบไฟล์จริง (ถ้ามี)
+    // Path ใน DB: /uploads/documents/file.jpg -> Path จริง: C:/project/uploads/documents/file.jpg
+    if (doc.path) {
+       // ตัด / ตัวแรกออกเพื่อให้ path.join ทำงานถูกกับ process.cwd()
+       const relativePath = doc.path.startsWith('/') ? doc.path.substring(1) : doc.path;
+       const absolutePath = path.join(process.cwd(), relativePath);
 
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath); 
-    } else {
-      console.warn(`ไม่สามารถลบไฟล์ได้ (ไม่พบ): ${filePath}`);
+       if (fs.existsSync(absolutePath)) {
+         fs.unlinkSync(absolutePath);
+       }
     }
-    
-    await Document.findByIdAndDelete(id);
-    res.json({ status: 'success', message: 'ลบเอกสารเรียบร้อยแล้ว' });
+
+    // ลบข้อมูลใน DB (หรือใช้ Soft Delete ตามระบบ Trash ที่เราทำไว้ก็ได้)
+    // ถ้าใช้ระบบ Trash ให้เปลี่ยนเป็น: 
+    // doc.isDeleted = true; doc.deletedAt = new Date(); await doc.save();
+    await Document.findByIdAndDelete(id); 
+
+    res.json({ message: "ลบไฟล์สำเร็จ" });
 
   } catch (error) {
-    console.error('เกิดข้อผิดพลาดในการลบเอกสาร:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Delete Error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการลบไฟล์" });
   }
 };
 
-export const downloadDocument = async (req, res) => {
+// --- 3. Get All Documents (Optional - อาจไม่ได้ใช้ถ้าใช้ folderController) ---
+export const getAllDocuments = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID เอกสารไม่ถูกต้อง' }); }
-
-    const document = await Document.findById(id);
-    if (!document) {
-      return res.status(404).json({ message: 'ไม่พบเอกสารนี้' });
-    }
-
-    const filePath = path.join(__dirname, '../', document.path.substring(1)); 
-
-    if (fs.existsSync(filePath)) {
-      res.download(filePath, document.originalFilename, (err) => {
-        if (err) {
-          console.error('เกิดข้อผิดพลาดระหว่างส่งไฟล์ดาวน์โหลด:', err.message);
-        }
-      });
-    } else {
-      console.warn(`ไม่พบไฟล์บนเซิร์ฟเวอร์: ${filePath}`);
-      return res.status(404).json({ message: 'ไม่พบไฟล์บนเซิร์ฟเวอร์ (อาจถูกลบไปแล้ว)' });
-    }
+    const docs = await Document.find().sort({ createdAt: -1 });
+    res.json(docs);
   } catch (error) {
-    console.error('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message });
   }
+};
+
+// --- 4. Download Document (Optional) ---
+export const downloadDocument = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const doc = await Document.findById(id);
+        if (!doc) return res.status(404).json({ message: "ไม่พบไฟล์" });
+
+        const relativePath = doc.path.startsWith('/') ? doc.path.substring(1) : doc.path;
+        const filePath = path.join(process.cwd(), relativePath);
+
+        if (fs.existsSync(filePath)) {
+            res.download(filePath, doc.originalFilename);
+        } else {
+            res.status(404).json({ message: "ไฟล์ต้นฉบับหายไป" });
+        }
+    } catch (error) {
+        res.status(500).json({ message: "ดาวน์โหลดล้มเหลว" });
+    }
 };
