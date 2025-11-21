@@ -1,90 +1,88 @@
-// controllers/contactController.js (เพิ่ม getUnreadCount)
+import Contact from "../models/contactModel.js";
 
-import Contact from '../models/contactModel.js'; 
-import mongoose from 'mongoose'; 
-
+// --- 1. Public: สร้างข้อความใหม่ (จากหน้าเว็บ) ---
 export const createPublicContact = async (req, res) => {
-        try {
-            const { name, email, message } = req.body;
-            if (!name || !email) { return res.status(400).json({ message: 'กรุณากรอกชื่อและอีเมล' }); }
-            const newContact = new Contact({ name, email, message });
-            await newContact.save();
-            res.status(201).json({ status: 'success', message: 'ได้รับข้อมูลติดต่อของคุณแล้ว' });
-        } catch (error) {
-         console.error('Error /submit-form:', error); // (มีอยู่แล้ว)
-            res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
-        }
+  try {
+    // ⭐️ รับค่า phone เข้ามาด้วย
+    const { name, email, phone, subject, message } = req.body;
+
+    // Validation ง่ายๆ
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+    }
+    
+    const newContact = new Contact({ 
+      name, 
+      email, 
+      phone: phone || '-', // ถ้าไม่มีเบอร์ ใส่ขีดไว้
+      subject, 
+      message,
+      isRead: false // ค่าเริ่มต้นคือยังไม่อ่าน
+    });
+
+    await newContact.save();
+    res.status(201).json({ message: "ส่งข้อความสำเร็จ เราจะติดต่อกลับโดยเร็วที่สุด" });
+
+  } catch (error) {
+    console.error("Contact Error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการส่งข้อความ" });
+  }
 };
 
+// --- 2. Admin: ดึงข้อความทั้งหมด ---
 export const getAllContacts = async (req, res) => {
-        try {
-            const contacts = await Contact.find({}).sort({ submittedAt: -1 });
-            res.json(contacts);
-        } catch (error) {
-        // ⭐️ (เพิ่ม)
-            console.error("Error in getAllContacts:", error); 
-            res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-    }
+  try {
+    // เรียงจาก ใหม่ -> เก่า (descending)
+    const contacts = await Contact.find().sort({ createdAt: -1 });
+    res.json(contacts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-export const getContactById = async (req, res) => {
-        try {
-            const { id } = req.params;
-            if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข้อมูลติดต่อไม่ถูกต้อง' }); }
-            const contactItem = await Contact.findById(id);
-            if (!contactItem) { return res.status(404).json({ message: 'ไม่พบข้อมูลติดต่อนี้' }); }
-            res.json(contactItem);
-        } catch (error) {
-        // ⭐️ (เพิ่ม)
-            console.error("Error in getContactById:", error);
-            res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
-        }
-};
-
-export const updateContactReadStatus = async (req, res) => {
-        try {
-            const { id } = req.params;
-            const { isRead } = req.body; 
-            if (typeof isRead !== 'boolean') {
-                return res.status(400).json({ message: 'Invalid isRead value' });
-            }
-            const contact = await Contact.findByIdAndUpdate(
-                id, 
-                { isRead }, 
-                { new: true } 
-        );
-            if (!contact) {
-                return res.status(404).json({ message: 'Contact not found' });
-            }
-            res.json(contact); 
-        } catch (error) {
-         console.error('Error /api/contacts/:id/read PATCH:', error); // (มีอยู่แล้ว)
-            res.status(500).json({ message: error.message });
-        }
-};
-
+// --- 3. Admin: ลบข้อความ ---
 export const deleteContact = async (req, res) => {
-        try {
-            const { id } = req.params;
-            if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข้อมูลติดต่อไม่ถูกต้อง' }); }
-            const deletedContact = await Contact.findByIdAndDelete(id);
-            if (!deletedContact) { return res.status(404).json({ message: 'ไม่พบข้อมูลติดต่อนี้' }); }
-            res.json({ status: 'success', message: 'ลบข้อมูลติดต่อสำเร็จ' });
-        } catch (error) {
-         console.error('Error /api/contacts/:id DELETE:', error); // (มีอยู่แล้ว)
-            res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
-        }
+  try {
+    const { id } = req.params;
+    const deletedContact = await Contact.findByIdAndDelete(id);
+    
+    if (!deletedContact) {
+      return res.status(404).json({ message: "ไม่พบข้อความนี้" });
+    }
+
+    res.json({ message: "ลบข้อความสำเร็จ" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// ⭐️⭐️⭐️ (นี่คือฟังก์ชันที่เพิ่มเข้ามาใหม่ครับ) ⭐️⭐️⭐️
+// --- 4. Admin: อัปเดตสถานะ (เช่น อ่านแล้ว) ---
+// (ใช้สำหรับเปลี่ยน isRead: true)
+export const updateContact = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedContact = await Contact.findByIdAndUpdate(
+      id, 
+      req.body, // รับค่าที่ส่งมา (เช่น { isRead: true })
+      { new: true }
+    );
+
+    if (!updatedContact) {
+        return res.status(404).json({ message: "ไม่พบข้อความนี้" });
+    }
+
+    res.json(updatedContact);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- 5. Admin: นับจำนวนข้อความที่ยังไม่อ่าน (สำหรับ Badge) ---
 export const getUnreadCount = async (req, res) => {
     try {
-    // นับเอกสารทั้งหมดที่ isRead = false
-    const count = await Contact.countDocuments({ isRead: false });
-    res.json({ count: count });
-    } catch (err) {
-    // (เพิ่ม console.error ที่เราเคยทำไว้)
-    console.error("Error in getUnreadCount:", err);
-    res.status(500).json({ error: "Server error" });
+        const count = await Contact.countDocuments({ isRead: false });
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };

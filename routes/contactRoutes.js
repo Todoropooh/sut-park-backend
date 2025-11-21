@@ -1,20 +1,13 @@
-// routes/contactRoutes.js (Corrected ESM)
+// routes/contactRoutes.js
 
-import express from 'express'; // (โค้ดเดิม)
-const router = express.Router();
-
-// (โค้ดเดิม)
+import express from 'express';
 import * as contactController from '../controllers/contactController.js';
 
-// (Path '/' ที่นี่ หมายถึง '/api/contacts')
-
-// ⭐️⭐️⭐️ (นี่คือบรรทัดที่เพิ่มเข้ามาครับ) ⭐️⭐️⭐️
-// (ต้องอยู่ก่อน /:id เสมอ)
-router.get('/unread-count', contactController.getUnreadCount);
+const router = express.Router();
 
 router.get('/', contactController.getAllContacts);
-router.get('/:id', contactController.getContactById);
-router.patch('/:id/read', contactController.updateContactReadStatus); // (ใช้ PATCH สำหรับอัปเดตเล็กน้อย)
+router.get('/unread-count', contactController.getUnreadCount); // ⭐️ สำหรับตัวเลขแดงๆ บนเมนู
 router.delete('/:id', contactController.deleteContact);
+router.patch('/:id', contactController.updateContact); // หรือ put ก็ได้
 
-export default router; // (บรรทัดนี้ถูกต้องแล้ว)  
+export default router;
