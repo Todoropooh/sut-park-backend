@@ -1,30 +1,31 @@
-// routes/folderRoutes.js (แก้ไขแล้ว)
-
 import express from 'express';
 import * as folderController from '../controllers/folderController.js';
 
 const router = express.Router();
 
-// ⭐️ (เส้นทางหลัก) ดึงข้อมูลทั้งหมดในโฟลเดอร์
+// --- 1. Read (อ่านข้อมูล) ---
+// GET /api/folders/contents
 router.get('/contents', folderController.getContents);
 
-// ⭐️⭐️⭐️ (นี่คือเส้นทางที่เพิ่มเข้ามาใหม่ครับ) ⭐️⭐️⭐️
-// ⭐️ ดึงข้อมูล Tree View (สำหรับ Sidebar)
+// GET /api/folders/tree (สำหรับ Sidebar)
 router.get('/tree', folderController.getFolderTree);
 
-// ⭐️ สร้างโฟลเดอร์ใหม่
-router.post('/create', folderController.createFolder);
+// --- 2. Create (สร้าง) ---
+// POST /api/folders (แก้จาก /create เป็น / เฉยๆ ตามมาตรฐาน REST)
+router.post('/', folderController.createFolder);
 
-// ⭐️ เปลี่ยนชื่อ (ไฟล์ หรือ โฟลเดอร์)
-router.post('/rename', folderController.renameItem);
+// --- 3. Update (แก้ไข) ---
+// PUT /api/folders/rename (แก้จาก POST เป็น PUT)
+router.put('/rename', folderController.renameItem);
 
-// ⭐️ ลบ (Soft Delete)
-router.post('/delete', folderController.deleteItem);
+// PUT /api/folders/move (แก้จาก POST เป็น PUT)
+router.put('/move', folderController.moveItem);
 
-// ⭐️ ย้าย (ไฟล์ หรือ โฟลเดอร์)
-router.post('/move', folderController.moveItem);
+// --- 4. Delete (ลบ) ---
+// DELETE /api/folders/:id (แก้จาก POST /delete เป็น DELETE /:id)
+router.delete('/:id', folderController.deleteItem);
 
-// ⭐️ คัดลอก (ไฟล์ หรือ โฟลเดอร์)
+// (Optional) Copy
 router.post('/copy', folderController.copyItem);
 
 export default router;
