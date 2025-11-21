@@ -1,27 +1,29 @@
-// models/activityModel.js (Updated for Trash Bin)
+// models/activityModel.js
+
 import mongoose from "mongoose";
 
 const activitySchema = new mongoose.Schema({
   title: { type: String, required: true },
-  date: { type: Date, required: true },
   content: { type: String, required: true },
   imageUrl: { type: String },
+  
+  // ⭐️ [เพิ่ม] รองรับวันเริ่ม-วันจบ
+  date: { type: Date },       // (เก็บไว้รองรับข้อมูลเก่า)
+  startDate: { type: Date },  // วันเริ่ม (Field ใหม่)
+  endDate: { type: Date },    // วันจบ (Field ใหม่)
 
-  // --- 👇 [เพิ่มส่วนนี้] ---
+  // ⭐️ Soft Delete
   isDeleted: { 
     type: Boolean, 
     default: false,
-    index: true // (เพิ่ม index ช่วยให้ค้นหาเร็วขึ้น)
+    index: true 
   },
   deletedAt: { 
     type: Date, 
     default: null 
   }
-  // --- 👆 [สิ้นสุดส่วนที่เพิ่ม] ---
 },
 {
-  // 👇 [เพิ่มส่วนนี้]
-  // (เพิ่มฟิลด์ createdAt และ updatedAt ให้อัตโนมัติ)
   timestamps: true 
 });
 
