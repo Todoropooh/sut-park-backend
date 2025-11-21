@@ -16,8 +16,13 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // ⭐️ แก้ชื่อไฟล์ภาษาไทยให้ปลอดภัย + ใส่ Timestamp
-    const safeName = Buffer.from(file.originalname, 'latin1').toString('utf8').replace(/\s+/g, '-');
+    // ⭐️ แก้ชื่อไฟล์ภาษาไทยให้ปลอดภัย (ป้องกันชื่อเพี้ยน)
+    // แปลง encoding จาก latin1 (default ของ multer) กลับเป็น utf8
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    
+    // ลบช่องว่างและตัวอักษรพิเศษ
+    const safeName = originalName.replace(/\s+/g, '-');
+    
     cb(null, Date.now() + '-' + safeName);
   }
 });
@@ -33,7 +38,7 @@ router.post('/upload', upload.array('files'), documentController.uploadDocument)
 // ลบไฟล์
 router.delete('/:id', documentController.deleteDocument);
 
-// (Optional) Download หรือ Get All (ถ้ายังใช้อยู่)
+// (Optional) Download หรือ Get All
 router.get('/', documentController.getAllDocuments);
 router.get('/:id/download', documentController.downloadDocument);
 

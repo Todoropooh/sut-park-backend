@@ -1,5 +1,3 @@
-// routes/serviceItemRoutes.js
-
 import express from "express";
 import multer from "multer";
 import fs from "fs"; // ⭐️ เพิ่ม fs เพื่อจัดการไฟล์/โฟลเดอร์
@@ -16,20 +14,23 @@ if (!fs.existsSync(uploadDir)){
 // Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // ⭐️ ใช้ตัวแปร path ที่เราสร้างไว้
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // ⭐️ ลบช่องว่างในชื่อไฟล์ออกเพื่อป้องกันปัญหา URL
-    const uniqueName = Date.now() + "-" + file.originalname.replace(/\s+/g, '-');
-    cb(null, uniqueName);
+    // ⭐️ [FIXED] แก้ชื่อไฟล์ภาษาไทยให้ปลอดภัย (แปลง latin1 -> utf8)
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    
+    // ลบช่องว่างและตัวอักษรพิเศษ
+    const safeName = originalName.replace(/\s+/g, '-');
+    
+    cb(null, Date.now() + "-" + safeName);
   }
 });
 
 const upload = multer({ storage });
 
 // Routes
-router.get("/", serviceItemController.getServiceItems); // (สำหรับ Admin หรือ Public ก็ได้ แล้วแต่การจัดการ)
+router.get("/", serviceItemController.getServiceItems);
 router.get("/public", serviceItemController.getPublicServiceItems);
 
 // ⭐️ upload.single("image") ต้องตรงกับ FormData ใน Frontend
