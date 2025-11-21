@@ -1,15 +1,11 @@
-import ServiceItem from '../models/serviceItemModel.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+// controllers/serviceItemController.js
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import ServiceItem from '../models/serviceItemModel.js';
 
 // --- Get All (Public) ---
 export const getPublicServiceItems = async (req, res) => {
   try {
-    const services = await ServiceItem.find().sort({ createdAt: -1 });
+    const services = await ServiceItem.find({ isDeleted: false }).sort({ createdAt: -1 });
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -19,7 +15,7 @@ export const getPublicServiceItems = async (req, res) => {
 // --- Get All (Admin) ---
 export const getServiceItems = async (req, res) => {
     try {
-      const services = await ServiceItem.find().sort({ createdAt: -1 });
+      const services = await ServiceItem.find({ isDeleted: false }).sort({ createdAt: -1 });
       res.json(services);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -29,21 +25,22 @@ export const getServiceItems = async (req, res) => {
 // --- Create ---
 export const createServiceItem = async (req, res) => {
   try {
-    // ⭐️ รับค่าให้ครบ
     const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
     
-    const imageUrl = req.file ? `/${req.file.path.replace(/\\/g, "/")}` : null;
+    // ⭐️ [Cloudinary] รับ URL รูปภาพโดยตรงจาก req.file.path
+    const imageUrl = req.file ? req.file.path : null;
 
     const newService = new ServiceItem({
       title,
       description,
-      imageUrl,
-      // ⭐️ บันทึกค่าลง DB
+      imageUrl, // เก็บ URL ของ Cloudinary (https://...)
       category: category || 'ทั่วไป',
       link: link || '',
       startDate: startDate || null,
       endDate: endDate || null,
       rewardAmount: rewardAmount || 0,
+      isDeleted: false,
+      deletedAt: null
     });
 
     await newService.save();
@@ -58,37 +55,21 @@ export const createServiceItem = async (req, res) => {
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    // ⭐️ รับค่าให้ครบ
     const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
     
-    const oldService = await ServiceItem.findById(id);
-    if (!oldService) return res.status(404).json({ message: "ไม่พบบริการ" });
-
     const updateData = { 
       title, 
       description, 
-      // ⭐️ อัปเดตค่า
-      category: category || 'ทั่วไป',
       link: link || '',
+      category: category || 'ทั่วไป',
       startDate: startDate || null,
       endDate: endDate || null,
       rewardAmount: rewardAmount || 0,
     };
 
-    // จัดการรูปภาพ
+    // ⭐️ [Cloudinary] ถ้ามีรูปใหม่มา ใช้ URL ใหม่ได้เลย
     if (req.file) {
-      updateData.imageUrl = `/${req.file.path.replace(/\\/g, "/")}`;
-
-      if (oldService.imageUrl) {
-        const oldPathRelative = oldService.imageUrl.startsWith('/') ? oldService.imageUrl.substring(1) : oldService.imageUrl;
-        const oldPathAbsolute = path.join(process.cwd(), oldPathRelative);
-
-        if (fs.existsSync(oldPathAbsolute)) { 
-             fs.unlink(oldPathAbsolute, (err) => {
-                if(err) console.log("Failed to delete old image:", err);
-             }); 
-        }
-      }
+      updateData.imageUrl = req.file.path;
     }
 
     const updatedService = await ServiceItem.findByIdAndUpdate(id, updateData, { new: true });
@@ -100,24 +81,25 @@ export const updateServiceItem = async (req, res) => {
   }
 };
 
-// --- Delete ---
+// --- Delete (Soft Delete) ---
 export const deleteServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const service = await ServiceItem.findByIdAndDelete(id);
+
+    // Soft Delete (ย้ายไปถังขยะ)
+    const updatedService = await ServiceItem.findByIdAndUpdate(
+      id, 
+      {
+        isDeleted: true,
+        deletedAt: new Date()
+      },
+      { new: true }
+    );
     
-    if (!service) return res.status(404).json({ message: "ไม่พบบริการ" });
+    if (!updatedService) return res.status(404).json({ message: "ไม่พบบริการ" });
 
-    if (service.imageUrl) {
-      const oldPathRelative = service.imageUrl.startsWith('/') ? service.imageUrl.substring(1) : service.imageUrl;
-      const filePath = path.join(process.cwd(), oldPathRelative);
-      
-      if (fs.existsSync(filePath)) {
-        fs.unlink(filePath, () => {});
-      }
-    }
+    res.json({ message: "ย้ายบริการไปถังขยะแล้ว" });
 
-    res.json({ message: "ลบบริการสำเร็จ" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
