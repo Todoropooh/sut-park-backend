@@ -1,22 +1,24 @@
-// routes/newsRoutes.js (Corrected ESM)
+// routes/newsRoutes.js
 
-import express from 'express'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
+import express from "express";
+import uploadCloud from "../middleware/uploadCloudinary.js"; // ⭐️ ใช้ Cloudinary
+import * as newsController from "../controllers/newsController.js";
+
 const router = express.Router();
 
-// (Middleware และ Controller)
-// 2. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import { ... }'
-import { upload } from '../middleware/uploadMiddleware.js'; 
+// Get
+router.get("/", newsController.getAllNews);
+router.get("/public", newsController.getPublicNews);
 
-// 3. ⭐️ (แก้ไข) เปลี่ยน 'require' เป็น 'import * as ...'
-import * as newsController from '../controllers/newsController.js';
+// Create & Update
+// ⭐️ Frontend ส่งมาชื่อ fieldว่า 'imageUrl' (ต้องตรงกัน)
+router.post("/", uploadCloud.single("imageUrl"), newsController.createNews);
+router.put("/:id", uploadCloud.single("imageUrl"), newsController.updateNews);
 
-// --- API Routes (Admin) ---
-// (Path '/' ที่นี่ จึงหมายถึง '/api/news')
+// Delete
+router.delete("/:id", newsController.deleteNews);
 
-router.get('/', newsController.getAllNews);
-router.get('/:id', newsController.getNewsById);
-router.post('/', upload.single('imageUrl'), newsController.createNews); 
-router.put('/:id', upload.single('imageUrl'), newsController.updateNews); 
-router.delete('/:id', newsController.deleteNews);
+// Get by ID
+router.get("/:id", newsController.getNewsById);
 
-export default router; // (บรรทัดนี้ถูกต้องแล้ว)
+export default router;

@@ -1,15 +1,9 @@
-// controllers/activityController.js (Updated for Start/End Date & Soft Delete)
+// controllers/activityController.js
 
 import Activity from "../models/activityModel.js";
-import fs from "fs";
-import path from "path";
 import mongoose from "mongoose";
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// --- Get Public (Active Only) ---
+// --- Get Public ---
 export const getPublicActivities = async (req, res) => {
   try {
     const activities = await Activity.find({ isDeleted: false }).sort({ startDate: -1 });
@@ -19,7 +13,7 @@ export const getPublicActivities = async (req, res) => {
   }
 };
 
-// --- Get All Admin (Active Only) ---
+// --- Get All Admin ---
 export const getAllActivities = async (req, res) => {
   try {
     const activities = await Activity.find({ isDeleted: false }).sort({ startDate: -1 });
@@ -45,21 +39,18 @@ export const getActivityById = async (req, res) => {
 // --- Create ---
 export const createActivity = async (req, res) => {
   try {
-    // ⭐️ [แก้ไข] รับค่า startDate, endDate แทน date
     const { title, content, startDate, endDate } = req.body;
     
-    const imageUrlPath = req.file ? `/${req.file.path.replace(/\\/g, "/")}` : null;
+    // ⭐️ [Cloudinary] รับ URL
+    const imageUrl = req.file ? req.file.path : null;
 
-    // ⭐️ [แก้ไข] ตรวจสอบ startDate แทน date
     if (!title || !startDate || !content) {
-        return res.status(400).json({ message: "กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน (หัวข้อ, วันเริ่ม, เนื้อหา)" });
+        return res.status(400).json({ message: "กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน" });
     }
 
     const newActivity = new Activity({ 
-        title, 
-        content, 
-        imageUrl: imageUrlPath,
-        // ⭐️ บันทึกฟิลด์ใหม่ (และรองรับ field เก่า 'date' ด้วย startDate เพื่อความชัวร์)
+        title, content, 
+        imageUrl, // เก็บ URL
         date: new Date(startDate), 
         startDate: startDate || null,
         endDate: endDate || null,
@@ -79,37 +70,18 @@ export const createActivity = async (req, res) => {
 export const updateActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    // ⭐️ [แก้ไข] รับค่าใหม่
     const { title, content, startDate, endDate } = req.body;
-    let { imageUrl: existingImageUrlFromForm } = req.body;
 
-    if (!title || !startDate || !content) {
-        return res.status(400).json({ message: "กรุณากรอกข้อมูลกิจกรรมให้ครบถ้วน" });
-    }
-
-    const oldActivity = await Activity.findById(id);
-    
     const updateData = { 
-        title, 
-        content,
-        date: new Date(startDate), // อัปเดต field เก่าด้วย
+        title, content,
+        date: new Date(startDate),
         startDate: startDate || null,
         endDate: endDate || null
     };
 
+    // ⭐️ อัปเดต URL รูป
     if (req.file) {
-      updateData.imageUrl = `/${req.file.path.replace(/\\/g, "/")}`;
-      
-      // ลบไฟล์เก่า
-      if (oldActivity && oldActivity.imageUrl) {
-        const oldPathRelative = oldActivity.imageUrl.startsWith('/') ? oldActivity.imageUrl.substring(1) : oldActivity.imageUrl;
-        const oldImagePath = path.join(process.cwd(), oldPathRelative);
-        if (fs.existsSync(oldImagePath)) {
-           fs.unlink(oldImagePath, () => {});
-        }
-      }
-    } else if (existingImageUrlFromForm === "") {
-        updateData.imageUrl = "";
+      updateData.imageUrl = req.file.path;
     }
 
     const updatedActivity = await Activity.findByIdAndUpdate(id, updateData, { new: true });
@@ -123,24 +95,19 @@ export const updateActivity = async (req, res) => {
   }
 };
 
-// --- Delete (Soft Delete) ---
+// --- Delete ---
 export const deleteActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "ID กิจกรรมไม่ถูกต้อง" });
-
-    // ⭐️ Soft Delete
     const deletedActivity = await Activity.findByIdAndUpdate(
         id, 
         { isDeleted: true, deletedAt: new Date() },
         { new: true }
     );
-
     if (!deletedActivity) return res.status(404).json({ message: "ไม่พบกิจกรรมนี้" });
 
     res.json({ status: "success", message: "ย้ายกิจกรรมไปถังขยะแล้ว" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
