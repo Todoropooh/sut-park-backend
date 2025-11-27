@@ -7,7 +7,10 @@ const employeeSchema = new mongoose.Schema({
   firstNameEn: { type: String, default: "" },
   lastNameEn: { type: String, default: "" },
   position: { type: String, required: true },
-  division: { type: String, default: "" }, // หน่วยงาน
+  
+  // ⭐️ ฟิลด์สำคัญ: หน่วยงาน
+  division: { type: String, default: "" }, 
+
   phoneNumber: { type: String },
   email: { type: String },
   birthDate: { type: Date },
