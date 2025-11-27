@@ -18,6 +18,7 @@ import * as contactController from "./controllers/contactController.js";
 import * as mainController from "./controllers/mainController.js";
 import * as serviceItemController from "./controllers/serviceItemController.js";
 import * as folderController from "./controllers/folderController.js";
+import * as employeeController from "./controllers/employeeController.js"; // ⭐️ 1. Import Employee Controller
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
@@ -31,7 +32,7 @@ import serviceItemRoutes from "./routes/serviceItemRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js"; 
 import folderRoutes from "./routes/folderRoutes.js"; 
 import trashRoutes from "./routes/trashRoutes.js"; 
-import employeeRoutes from "./routes/employeeRoutes.js"; // ⭐️ 1. เพิ่ม Import
+import employeeRoutes from "./routes/employeeRoutes.js"; 
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -54,12 +55,13 @@ app.use(cors({
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --- Public Routes ---
+// --- Public Routes (ใครก็เข้าได้) ---
 app.get("/api/test", mainController.getApiTest);
 app.get("/public/news", newsController.getPublicNews);
 app.get("/public/activities", activityController.getPublicActivities);
 app.get("/public/bookings", bookingController.getPublicBookings);
 app.get("/public/services", serviceItemController.getPublicServiceItems);
+app.get("/public/employees", employeeController.getPublicEmployees); // ⭐️ 2. เพิ่ม Route นี้
 
 app.post("/submit-form", contactController.createPublicContact);
 app.post("/api/login", mainController.loginUser);
@@ -67,7 +69,7 @@ app.post("/api/login", mainController.loginUser);
 // File serving
 app.use("/public/files", fileRoutes);
 
-// --- Admin Protected Routes ---
+// --- Admin Protected Routes (ต้องล็อกอิน) ---
 app.use("/api/dashboard", authenticateToken, isAdmin, dashboardRoutes);
 app.use("/api/news", authenticateToken, isAdmin, newsRoutes);
 app.use("/api/activities", authenticateToken, isAdmin, activityRoutes);
@@ -78,7 +80,7 @@ app.use("/api/users", authenticateToken, isAdmin, userRoutes);
 app.use("/api/services", authenticateToken, isAdmin, serviceItemRoutes);
 app.use("/api/folders", authenticateToken, isAdmin, folderRoutes);
 app.use("/api/trash", authenticateToken, isAdmin, trashRoutes);
-app.use("/api/employees", authenticateToken, isAdmin, employeeRoutes); // ⭐️ 2. เพิ่ม Route
+app.use("/api/employees", authenticateToken, isAdmin, employeeRoutes);
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
