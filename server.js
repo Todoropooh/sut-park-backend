@@ -31,6 +31,7 @@ import serviceItemRoutes from "./routes/serviceItemRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js"; 
 import folderRoutes from "./routes/folderRoutes.js"; 
 import trashRoutes from "./routes/trashRoutes.js"; 
+import employeeRoutes from "./routes/employeeRoutes.js"; // ⭐️ 1. เพิ่ม Import
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -42,7 +43,7 @@ const host = "0.0.0.0";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ⭐️ GLOBAL CORS (อนุญาตทุกคน 100%)
+// GLOBAL CORS
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -77,6 +78,7 @@ app.use("/api/users", authenticateToken, isAdmin, userRoutes);
 app.use("/api/services", authenticateToken, isAdmin, serviceItemRoutes);
 app.use("/api/folders", authenticateToken, isAdmin, folderRoutes);
 app.use("/api/trash", authenticateToken, isAdmin, trashRoutes);
+app.use("/api/employees", authenticateToken, isAdmin, employeeRoutes); // ⭐️ 2. เพิ่ม Route
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
