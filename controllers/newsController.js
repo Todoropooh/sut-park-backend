@@ -1,13 +1,13 @@
 // src/controllers/newsController.js
 
 import News from '../models/newsModel.js';
-import SiteStat from '../models/siteStatModel.js'; // อย่าลืมไฟล์นี้นะครับ
+import SiteStat from '../models/siteStatModel.js'; // ต้องมีไฟล์นี้ใน models ด้วยนะครับ
 import mongoose from 'mongoose';
 
-// --- Public Get ---
+// --- Public Get (คนทั่วไปดู) ---
 export const getPublicNews = async (req, res) => {
     try {
-        // นับยอดวิว (ถ้ามีไฟล์ SiteStat แล้ว)
+        // นับยอดวิว (ใส่ try-catch กันเหนียว เผื่อระบบ Stat มีปัญหา ข่าวจะได้ไม่ล่ม)
         try {
             await SiteStat.findOneAndUpdate(
                 { name: 'totalPageViews' },
@@ -18,20 +18,21 @@ export const getPublicNews = async (req, res) => {
             console.warn("SiteStat Error:", statError.message);
         }
 
+        // ดึงเฉพาะข่าวที่ยังไม่ลบ
         const news = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
         res.json(news);
     } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
     }
 };
 
-// --- Admin Get All ---
+// --- Admin Get All (แอดมินดู) ---
 export const getAllNews = async (req, res) => {
     try {
         const news = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
         res.json(news);
     } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
     }
 };
 
@@ -49,34 +50,37 @@ export const getNewsById = async (req, res) => {
     }
 };
 
-// --- Create ---
+// --- Create (สร้างข่าว + Cloudinary) ---
 export const createNews = async (req, res) => {
     const { title, category, content, startDate, endDate } = req.body;
     
-    // ⭐️ [Cloudinary] เมื่อใช้ CloudinaryStorage, req.file.path จะเป็น URL ของรูปบน Cloudinary เลย
+    // ⭐️ [Cloudinary] ถ้ามีไฟล์แนบมา req.file.path จะเป็น URL ของรูปบน Cloudinary เลย
     const imageUrl = req.file ? req.file.path : null;
     
     if (!title || !content) { return res.status(400).json({ message: 'กรุณากรอกหัวข้อ และเนื้อหาข่าว' }); }
     
     try {
         const newNewsItem = new News({ 
-            title, category: category || 'ทั่วไป', content, 
-            imageUrl, // เก็บ URL จาก Cloudinary
+            title, 
+            category: category || 'ทั่วไป', 
+            content, 
+            imageUrl, // บันทึก URL เต็มๆ ที่ได้จาก Cloudinary
             publishedAt: new Date(),
             startDate: startDate || null,
             endDate: endDate || null,
             isDeleted: false,
             deletedAt: null
         });
+        
         await newNewsItem.save();
         res.status(201).json({ status: 'success', message: `สร้างข่าว "${title}" สำเร็จ` });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error in createNews:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
     }
 };
 
-// --- Update ---
+// --- Update (แก้ไขข่าว + Cloudinary) ---
 export const updateNews = async (req, res) => {
     try {
         const { id } = req.params;
@@ -86,12 +90,14 @@ export const updateNews = async (req, res) => {
         if (!oldNews) { return res.status(404).json({ message: 'ไม่พบข่าวนี้' }); }
         
         const updateData = { 
-            title, category: category || 'ทั่วไป', content,
+            title, 
+            category: category || 'ทั่วไป', 
+            content,
             startDate: startDate || null,
             endDate: endDate || null
         };
         
-        // ⭐️ ถ้ามีรูปใหม่มา (req.file ไม่เป็น undefined) ให้ใช้ URL ใหม่จาก Cloudinary
+        // ⭐️ ถ้ามีการอัปโหลดรูปใหม่ (req.file มีค่า) ให้ใช้ URL ใหม่จาก Cloudinary
         if (req.file) { 
             updateData.imageUrl = req.file.path;
         }
@@ -99,23 +105,28 @@ export const updateNews = async (req, res) => {
         const updatedNews = await News.findByIdAndUpdate( id, updateData, { new: true } );
         res.json({ status: 'success', message: 'อัปเดตข่าวสำเร็จ', data: updatedNews });
     } catch (error) {
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+        console.error('Error in updateNews:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการแก้ไข' });
     }
 };
 
-// --- Delete (Soft Delete) ---
+// --- Delete (Soft Delete + บันทึกคนลบ) ---
 export const deleteNews = async (req, res) => {
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
         
-        // 🟢 FIX: เพิ่มการบันทึก deletedBy (req.user._id)
+        if (!mongoose.Types.ObjectId.isValid(id)) { 
+            return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); 
+        }
+        
+        // 🟢 FIX: เพิ่มการบันทึก deletedBy
+        // ต้องแน่ใจว่า Route มี authenticateToken กั้นไว้ เพื่อให้ req.user มีค่า
         const deletedNews = await News.findByIdAndUpdate(
             id, 
             { 
                 isDeleted: true, 
                 deletedAt: new Date(),
-                deletedBy: req.user ? req.user._id : null // 👈 บันทึกคนที่กดลบ
+                deletedBy: req.user ? req.user._id : null // 👈 บันทึก ID ของคนที่กดลบ (สำคัญมาก!)
             },
             { new: true }
         );
@@ -124,7 +135,7 @@ export const deleteNews = async (req, res) => {
 
         res.json({ status: 'success', message: 'ย้ายข่าวไปถังขยะแล้ว' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+        console.error('Error in deleteNews:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการลบ' });
     }
 };
