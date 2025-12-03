@@ -12,10 +12,10 @@ import {
 
 // 🟢 Import Middleware ตรวจสอบสิทธิ์ (Auth)
 // (ชื่อไฟล์อาจจะต่างกัน เช็คดูนะครับว่าของแจ้มชื่อ authMiddleware.js หรือเปล่า)
-import { authenticateToken } from '../middlewares/authMiddleware.js'; 
+import { authenticateToken } from '../middleware/authMiddleware.js'; 
 
 // 🟢 Import Middleware สำหรับอัปโหลดรูป (ถ้ามี)
-import { upload } from '../middlewares/uploadMiddleware.js'; 
+import { upload } from '../middleware/uploadMiddleware.js'; 
 
 const router = express.Router();
 
