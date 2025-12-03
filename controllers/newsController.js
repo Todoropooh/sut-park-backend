@@ -104,9 +104,14 @@ export const deleteNews = async (req, res) => {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); }
         
+        // 🟢 FIX: เพิ่มการบันทึก deletedBy (req.user._id)
         const deletedNews = await News.findByIdAndUpdate(
             id, 
-            { isDeleted: true, deletedAt: new Date() },
+            { 
+                isDeleted: true, 
+                deletedAt: new Date(),
+                deletedBy: req.user ? req.user._id : null // 👈 สำคัญ: บันทึกคนลบ
+            },
             { new: true }
         );
 
@@ -114,6 +119,7 @@ export const deleteNews = async (req, res) => {
 
         res.json({ status: 'success', message: 'ย้ายข่าวไปถังขยะแล้ว' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
     }
 };
