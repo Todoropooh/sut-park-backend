@@ -1,45 +1,31 @@
+// src/routes/documentRoutes.js
+
 import express from 'express';
-import multer from 'multer'; // ⭐️ 1. นำเข้า multer
-import fs from 'fs';         // ⭐️ 2. นำเข้า fs เพื่อเช็คโฟลเดอร์
-import * as documentController from '../controllers/documentController.js';
+import { 
+    uploadDocument, 
+    deleteDocument,
+    getDocuments // 🟢 ต้อง import ชื่อให้ตรงกับที่มีใน Controller
+} from '../controllers/documentController.js';
+
+// 🟢 นำเข้า Middleware ที่เราทำไว้แล้ว (จะได้ไม่ต้องเขียนซ้ำ)
+import { authenticateToken } from '../middleware/authMiddleware.js'; 
+import { documentUpload } from '../middleware/uploadMiddleware.js'; 
 
 const router = express.Router();
 
-// --- 3. ตั้งค่าที่เก็บไฟล์ (Logic สร้างโฟลเดอร์อัตโนมัติ) ---
-const uploadDir = 'uploads/documents';
-if (!fs.existsSync(uploadDir)){
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // ⭐️ แก้ชื่อไฟล์ภาษาไทยให้ปลอดภัย (ป้องกันชื่อเพี้ยน)
-    // แปลง encoding จาก latin1 (default ของ multer) กลับเป็น utf8
-    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    
-    // ลบช่องว่างและตัวอักษรพิเศษ
-    const safeName = originalName.replace(/\s+/g, '-');
-    
-    cb(null, Date.now() + '-' + safeName);
-  }
-});
-
-const upload = multer({ storage });
-
 // --- Routes ---
 
-// ⭐️ เปลี่ยนจาก .single('documentFile') เป็น .array('files') 
-// เพื่อให้ตรงกับ Frontend ที่เราใช้ Dragger Upload หลายไฟล์พร้อมกัน
-router.post('/upload', upload.array('files'), documentController.uploadDocument);
+// 1. อัปโหลดไฟล์ (ใช้ documentUpload จาก middleware)
+// รับทีละหลายไฟล์ ชื่อ field 'files' ให้ตรงกับหน้าบ้าน
+router.post('/upload', authenticateToken, documentUpload.array('files'), uploadDocument);
 
-// ลบไฟล์
-router.delete('/:id', documentController.deleteDocument);
+// 2. ลบไฟล์
+router.delete('/:id', authenticateToken, deleteDocument);
 
-// (Optional) Download หรือ Get All
-router.get('/', documentController.getAllDocuments);
-router.get('/:id/download', documentController.downloadDocument);
+// 3. ดึงรายการไฟล์ (ใช้ getDocuments ตามที่ Controller มี)
+router.get('/', authenticateToken, getDocuments);
+
+// (Optional) ถ้ายังไม่ได้ทำฟังก์ชัน download ใน controller ให้คอมเมนต์บรรทัดนี้ไปก่อนครับ ไม่งั้นจะ Error
+// router.get('/:id/download', documentController.downloadDocument);
 
 export default router;
