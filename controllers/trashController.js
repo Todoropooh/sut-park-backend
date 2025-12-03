@@ -4,7 +4,7 @@ import News from '../models/newsModel.js';
 import Activity from '../models/activityModel.js';
 import Folder from '../models/folderModel.js';
 import Document from '../models/documentModel.js';
-import Employee from '../models/employee.js';
+import Employee from '../models/Employee.js';
 // import Service from '../models/serviceModel.js'; // (ถ้ามี Service ก็ import มาด้วยนะครับ)
 
 import fs from 'fs';
