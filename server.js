@@ -1,3 +1,5 @@
+// src/server.js
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,17 +12,11 @@ import { fileURLToPath } from 'url';
 // Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
-// Controllers
-import * as newsController from "./controllers/newsController.js";
-import * as activityController from "./controllers/activityController.js";
-import * as bookingController from "./controllers/bookingController.js";
-import * as contactController from "./controllers/contactController.js";
+// Controllers (เอาเฉพาะที่จำเป็นต้องใช้ตรงนี้จริงๆ เช่น login)
 import * as mainController from "./controllers/mainController.js";
-import * as serviceItemController from "./controllers/serviceItemController.js";
-import * as folderController from "./controllers/folderController.js";
-import * as employeeController from "./controllers/employeeController.js"; // ⭐️ 1. Import Employee Controller
+import * as contactController from "./controllers/contactController.js";
 
-// Routes
+// Routes (นำเข้า Route ที่เราแยกไว้)
 import newsRoutes from "./routes/newsRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -55,32 +51,31 @@ app.use(cors({
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --- Public Routes (ใครก็เข้าได้) ---
+// --- Public Routes (Endpoints พิเศษที่ไม่อยู่ใน Route แยก) ---
 app.get("/api/test", mainController.getApiTest);
-app.get("/public/news", newsController.getPublicNews);
-app.get("/public/activities", activityController.getPublicActivities);
-app.get("/public/bookings", bookingController.getPublicBookings);
-app.get("/public/services", serviceItemController.getPublicServiceItems);
-app.get("/public/employees", employeeController.getPublicEmployees); // ⭐️ 2. เพิ่ม Route นี้
-
 app.post("/submit-form", contactController.createPublicContact);
 app.post("/api/login", mainController.loginUser);
 
 // File serving
 app.use("/public/files", fileRoutes);
 
-// --- Admin Protected Routes (ต้องล็อกอิน) ---
-app.use("/api/dashboard", authenticateToken, isAdmin, dashboardRoutes);
-app.use("/api/news", authenticateToken, isAdmin, newsRoutes);
-app.use("/api/activities", authenticateToken, isAdmin, activityRoutes);
-app.use("/api/bookings", authenticateToken, isAdmin, bookingRoutes);
-app.use("/api/contacts", authenticateToken, isAdmin, contactRoutes);
-app.use("/api/documents", authenticateToken, isAdmin, documentRoutes);
-app.use("/api/users", authenticateToken, isAdmin, userRoutes);
-app.use("/api/services", authenticateToken, isAdmin, serviceItemRoutes);
-app.use("/api/folders", authenticateToken, isAdmin, folderRoutes);
-app.use("/api/trash", authenticateToken, isAdmin, trashRoutes);
-app.use("/api/employees", authenticateToken, isAdmin, employeeRoutes);
+// --- API Routes (เชื่อมต่อกับไฟล์ Route ที่เราทำไว้) ---
+// 🟢 สังเกตว่าเราใช้ app.use เชื่อมไปที่ Route เลย ไม่ต้องเรียก Controller ตรงนี้แล้ว
+// 🟢 บาง Route เราใส่ Auth ไว้ในไฟล์ Route แล้ว (เช่น newsRoutes) ก็ไม่ต้องใส่ authenticateToken ตรงนี้ซ้ำก็ได้ 
+// หรือจะใส่ดักไว้ชั้นแรกเลยก็ได้ (แต่ต้องระวัง Public route ข้างในจะเข้าไม่ได้)
+
+// เพื่อความชัวร์และยืดหยุ่น ให้ไปจัดการ Auth ในไฟล์ Route ของแต่ละตัวดีกว่าครับ
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/news", newsRoutes);
+app.use("/api/activities", activityRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/contacts", contactRoutes);
+app.use("/api/documents", documentRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/services", serviceItemRoutes);
+app.use("/api/folders", folderRoutes);
+app.use("/api/trash", trashRoutes);
+app.use("/api/employees", employeeRoutes);
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
