@@ -12,11 +12,11 @@ import { fileURLToPath } from 'url';
 // Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
-// Controllers (เอาเฉพาะที่จำเป็นต้องใช้ตรงนี้จริงๆ เช่น login)
+// Controllers
 import * as mainController from "./controllers/mainController.js";
 import * as contactController from "./controllers/contactController.js";
 
-// Routes (นำเข้า Route ที่เราแยกไว้)
+// Routes
 import newsRoutes from "./routes/newsRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -51,7 +51,7 @@ app.use(cors({
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --- Public Routes (Endpoints พิเศษที่ไม่อยู่ใน Route แยก) ---
+// --- Public Routes ---
 app.get("/api/test", mainController.getApiTest);
 app.post("/submit-form", contactController.createPublicContact);
 app.post("/api/login", mainController.loginUser);
@@ -59,12 +59,7 @@ app.post("/api/login", mainController.loginUser);
 // File serving
 app.use("/public/files", fileRoutes);
 
-// --- API Routes (เชื่อมต่อกับไฟล์ Route ที่เราทำไว้) ---
-// 🟢 สังเกตว่าเราใช้ app.use เชื่อมไปที่ Route เลย ไม่ต้องเรียก Controller ตรงนี้แล้ว
-// 🟢 บาง Route เราใส่ Auth ไว้ในไฟล์ Route แล้ว (เช่น newsRoutes) ก็ไม่ต้องใส่ authenticateToken ตรงนี้ซ้ำก็ได้ 
-// หรือจะใส่ดักไว้ชั้นแรกเลยก็ได้ (แต่ต้องระวัง Public route ข้างในจะเข้าไม่ได้)
-
-// เพื่อความชัวร์และยืดหยุ่น ให้ไปจัดการ Auth ในไฟล์ Route ของแต่ละตัวดีกว่าครับ
+// --- API Routes ---
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/activities", activityRoutes);
@@ -81,8 +76,18 @@ app.use("/api/employees", employeeRoutes);
 console.log("Connecting to MongoDB...");
 mongoose
   .connect(MONGO_URI)
-  .then(() => {
+  .then(async () => { // 🟢 เพิ่ม async เพื่อให้ใช้ await ข้างในได้
     console.log("✅ MongoDB connected successfully!");
+
+    // 🟢 [FIX] คำสั่งลบ Index เก่าทิ้ง (Run Once)
+    try {
+        await mongoose.connection.collection('documents').dropIndex('storedFilename_1');
+        console.log("🔥 LOB INDEX 'storedFilename_1' TING LEAW KRUB! (Index Dropped)");
+    } catch (e) {
+        // ถ้า Index ไม่มีอยู่แล้ว หรือลบไปแล้ว จะเข้าตรงนี้ ไม่เป็นไรครับ
+        console.log("ℹ️ Index might already be deleted or not found (Safe to ignore)");
+    }
+
     app.listen(port, host, () => {
       console.log(`✅ Server running at http://${host}:${port}`);
     });
