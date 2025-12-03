@@ -1,106 +1,128 @@
-// controllers/serviceItemController.js
+// src/controllers/serviceItemController.js
 
-import ServiceItem from '../models/serviceItemModel.js';
+import Service from '../models/serviceModel.js'; // 🟢 เช็คชื่อไฟล์ Model ให้ตรงกับที่มีจริงนะครับ (serviceModel.js หรือ Service.js)
+import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// --- Get All (Public) ---
-export const getPublicServiceItems = async (req, res) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// --- 1. Get All (Public) ---
+export const getServiceItems = async (req, res) => {
   try {
-    const services = await ServiceItem.find({ isDeleted: false }).sort({ createdAt: -1 });
+    const services = await Service.find({ isDeleted: false }).sort({ createdAt: -1 });
     res.json(services);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
   }
 };
 
-// --- Get All (Admin) ---
-export const getServiceItems = async (req, res) => {
-    try {
-      const services = await ServiceItem.find({ isDeleted: false }).sort({ createdAt: -1 });
-      res.json(services);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+// --- 2. Get By ID (ตัวที่ Error ตะกี้) ---
+export const getServiceItemById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
-  };
+    
+    const service = await Service.findOne({ _id: id, isDeleted: false });
+    
+    if (!service) {
+        return res.status(404).json({ message: "ไม่พบข้อมูลบริการนี้" });
+    }
+    
+    res.json(service);
+  } catch (error) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
+  }
+};
 
-// --- Create ---
+// --- 3. Create ---
 export const createServiceItem = async (req, res) => {
   try {
-    const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
+    const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
     
-    // ⭐️ [Cloudinary] รับ URL รูปภาพโดยตรงจาก req.file.path
+    // รับ URL รูปจาก Cloudinary
     const imageUrl = req.file ? req.file.path : null;
 
-    const newService = new ServiceItem({
-      title,
-      description,
-      imageUrl, // เก็บ URL ของ Cloudinary (https://...)
-      category: category || 'ทั่วไป',
-      link: link || '',
-      startDate: startDate || null,
-      endDate: endDate || null,
-      rewardAmount: rewardAmount || 0,
-      isDeleted: false,
-      deletedAt: null
+    if (!title) {
+        return res.status(400).json({ message: "กรุณากรอกชื่อบริการ/ทุน" });
+    }
+
+    const newService = new Service({ 
+        title, 
+        category: category || 'ทั่วไป',
+        description,
+        imageUrl,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        rewardAmount: rewardAmount || 0,
+        link: link || '',
+        isDeleted: false,
+        deletedAt: null
     });
 
     await newService.save();
-    res.status(201).json(newService);
+    res.status(201).json({ status: "success", message: "เพิ่มข้อมูลสำเร็จ" });
   } catch (error) {
-    console.error("Error creating service:", error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในการสร้างบริการ" });
+    console.error(error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดบนเซิร์ฟเวอร์" });
   }
 };
 
-// --- Update ---
+// --- 4. Update ---
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, link, startDate, endDate, rewardAmount, category } = req.body;
-    
+    const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
+
     const updateData = { 
-      title, 
-      description, 
-      link: link || '',
-      category: category || 'ทั่วไป',
-      startDate: startDate || null,
-      endDate: endDate || null,
-      rewardAmount: rewardAmount || 0,
+        title, category, description, 
+        startDate: startDate || null,
+        endDate: endDate || null,
+        rewardAmount: rewardAmount || 0,
+        link: link || ''
     };
 
-    // ⭐️ [Cloudinary] ถ้ามีรูปใหม่มา ใช้ URL ใหม่ได้เลย
+    // อัปเดต URL รูปถ้ามี
     if (req.file) {
       updateData.imageUrl = req.file.path;
     }
 
-    const updatedService = await ServiceItem.findByIdAndUpdate(id, updateData, { new: true });
-    res.json(updatedService);
+    const updatedService = await Service.findByIdAndUpdate(id, updateData, { new: true });
+    
+    if (!updatedService) return res.status(404).json({ message: "ไม่พบข้อมูล" });
+    
+    res.json({ status: "success", message: "อัปเดตข้อมูลสำเร็จ", data: updatedService });
 
   } catch (error) {
-    console.error("Error updating service:", error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในการแก้ไข" });
+    console.error(error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
 
-// --- Delete (Soft Delete) ---
+// --- 5. Delete (Soft Delete) ---
 export const deleteServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Soft Delete (ย้ายไปถังขยะ)
-    const updatedService = await ServiceItem.findByIdAndUpdate(
-      id, 
-      {
-        isDeleted: true,
-        deletedAt: new Date()
-      },
-      { new: true }
-    );
     
-    if (!updatedService) return res.status(404).json({ message: "ไม่พบบริการ" });
+    // บันทึกคนลบ (deletedBy)
+    const deletedService = await Service.findByIdAndUpdate(
+        id, 
+        { 
+            isDeleted: true, 
+            deletedAt: new Date(),
+            deletedBy: req.user ? req.user._id : null 
+        },
+        { new: true }
+    );
 
-    res.json({ message: "ย้ายบริการไปถังขยะแล้ว" });
+    if (!deletedService) return res.status(404).json({ message: "ไม่พบข้อมูล" });
 
+    res.json({ status: "success", message: "ลบข้อมูลสำเร็จ" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
