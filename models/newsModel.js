@@ -7,11 +7,11 @@ const newsSchema = new mongoose.Schema({
   imageUrl: { type: String }, 
   publishedAt: { type: Date, default: Date.now },
 
-  // ⭐️ ส่วนที่เพิ่มใหม่ (วันเริ่ม-จบ)
+  // วันเริ่ม-จบ
   startDate: { type: Date }, 
   endDate: { type: Date },
 
-  // ⭐️ ส่วน Soft Delete
+  // ⭐️ ส่วน Soft Delete (เพิ่ม deletedBy แล้ว)
   isDeleted: { 
     type: Boolean, 
     default: false,
@@ -19,6 +19,12 @@ const newsSchema = new mongoose.Schema({
   },
   deletedAt: { 
     type: Date, 
+    default: null 
+  },
+  // 👇 ต้องเพิ่มบรรทัดนี้ครับ ไม่งั้นหาคนลบไม่เจอ
+  deletedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
     default: null 
   }
 }, 

@@ -1,32 +1,15 @@
-// models/folderModel.js (แก้ไข - เพิ่ม Soft Delete)
-
 import mongoose from 'mongoose';
 
 const folderSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  parentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Folder', 
-    default: null, 
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+  name: { type: String, required: true },
+  parentId: { type: String, default: '0-0' }, // '0-0' คือ Root
+  path: { type: Array, default: [] },
   
-  // ⭐️⭐️⭐️ (เพิ่ม 2 ช่องนี้ครับ) ⭐️⭐️⭐️
-  isDeleted: {
-    type: Boolean,
-    default: false,
-    index: true // (เพิ่ม index ให้ค้นหาเร็วขึ้น)
-  },
-  deletedAt: {
-    type: Date,
-    default: null
-  }
-});
+  // ⭐️ ส่วน Soft Delete (ต้องเติม deletedBy)
+  isDeleted: { type: Boolean, default: false, index: true },
+  deletedAt: { type: Date, default: null },
+  deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null } // 👈 เพิ่มบรรทัดนี้
+}, 
+{ timestamps: true });
 
 export default mongoose.model('Folder', folderSchema);

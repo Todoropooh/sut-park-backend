@@ -1,20 +1,38 @@
-import mongoose from "mongoose";
+// models/employee.js
+
+import mongoose from 'mongoose';
 
 const employeeSchema = new mongoose.Schema({
   employeeId: { type: String, required: true, unique: true },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
-  firstNameEn: { type: String, default: "" },
-  lastNameEn: { type: String, default: "" },
-  position: { type: String, required: true },
-  
-  // ⭐️ ฟิลด์สำคัญ: หน่วยงาน
-  division: { type: String, default: "" }, 
+  firstNameEn: String,
+  lastNameEn: String,
+  position: String,
+  division: String,
+  email: String,
+  phoneNumber: String,
+  imageUrl: String,
 
-  phoneNumber: { type: String },
-  email: { type: String },
-  birthDate: { type: Date },
-  idCardNumber: { type: String },
-}, { timestamps: true });
+  // ⭐️ ส่วน Soft Delete (ต้องมีครบ 3 ตัวนี้)
+  isDeleted: { 
+    type: Boolean, 
+    default: false, 
+    index: true 
+  },
+  deletedAt: { 
+    type: Date, 
+    default: null 
+  },
+  // 👇 ตัวสำคัญที่ขาดไม่ได้ สำหรับโชว์ในหน้าถังขยะ
+  deletedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    default: null 
+  }
+}, 
+{ 
+  timestamps: true 
+});
 
-export default mongoose.model("Employee", employeeSchema);
+export default mongoose.model('Employee', employeeSchema);
