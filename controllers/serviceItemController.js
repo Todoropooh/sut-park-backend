@@ -1,6 +1,6 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceModel.js'; // 🟢 เช็คชื่อไฟล์ Model ให้ตรงกับที่มีจริงนะครับ (serviceModel.js หรือ Service.js)
+import Service from '../models/serviceItemModel.js'; // 🟢 แก้ชื่อไฟล์ให้ตรงแล้ว
 import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +19,7 @@ export const getServiceItems = async (req, res) => {
   }
 };
 
-// --- 2. Get By ID (ตัวที่ Error ตะกี้) ---
+// --- 2. Get By ID ---
 export const getServiceItemById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -86,7 +86,6 @@ export const updateServiceItem = async (req, res) => {
         link: link || ''
     };
 
-    // อัปเดต URL รูปถ้ามี
     if (req.file) {
       updateData.imageUrl = req.file.path;
     }
@@ -108,7 +107,6 @@ export const deleteServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // บันทึกคนลบ (deletedBy)
     const deletedService = await Service.findByIdAndUpdate(
         id, 
         { 
