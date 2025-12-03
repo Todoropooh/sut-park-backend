@@ -1,20 +1,24 @@
-// routes/trashRoutes.js (New File)
+// src/routes/trashRoutes.js
 
 import express from 'express';
-import * as trashController from '../controllers/trashController.js';
+import { 
+    getTrashItems, 
+    restoreItem, 
+    deleteItemPermanently 
+} from '../controllers/trashController.js';
+
+// 🟢 แก้จาก middlewares -> middleware (ตัด s ออก)
+import { authenticateToken } from '../middleware/authMiddleware.js'; 
 
 const router = express.Router();
 
-// ⭐️ Get all items in the trash
-// GET /api/trash
-router.get('/', trashController.getTrashItems);
+// ดึงข้อมูลถังขยะ
+router.get('/', authenticateToken, getTrashItems);
 
-// ⭐️ Restore an item (file or folder)
-// POST /api/trash/restore
-router.post('/restore', trashController.restoreItem);
+// กู้คืน (รับ ID จาก URL)
+router.post('/restore/:id', authenticateToken, restoreItem);
 
-// ⭐️ Delete an item permanently (file or folder)
-// POST /api/trash/delete-permanent
-router.post('/delete-permanent', trashController.deleteItemPermanently);
+// ลบถาวร (รับ ID จาก URL)
+router.delete('/:id', authenticateToken, deleteItemPermanently);
 
 export default router;
