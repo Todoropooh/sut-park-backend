@@ -22,15 +22,15 @@ export const uploadDocument = async (req, res) => {
         // วนลูปบันทึกทีละไฟล์
         for (const file of req.files) {
             const newDoc = new Document({
-                originalFilename: file.originalname, // ชื่อไฟล์เดิม (เช่น รายงาน.pdf)
+                originalFilename: file.originalname,
                 
-                // 🟢 [FIX] ต้องเพิ่มบรรทัดนี้ครับ ไม่งั้น Error Validation Failed
+                // 🟢 [FIX] บรรทัดนี้สำคัญมาก! ต้องมี ไม่งั้น Error 500
                 filename: file.filename,             
                 
-                path: file.path,                     // path ที่เก็บไฟล์
+                path: file.path,
                 size: file.size,
                 mimetype: file.mimetype,
-                folderId: folderId || '0-0',         // ถ้าไม่ส่งมา ให้ลง Root
+                folderId: folderId || '0-0',
                 isDeleted: false,
                 deletedAt: null,
                 deletedBy: null
@@ -47,16 +47,19 @@ export const uploadDocument = async (req, res) => {
 
     } catch (error) {
         console.error("Upload Error:", error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปโหลด' });
+        // ส่ง Error กลับไปดูชัดๆ ว่าพังตรงไหน
+        res.status(500).json({ 
+            message: 'เกิดข้อผิดพลาดในการอัปโหลด', 
+            error: error.message 
+        });
     }
 };
 
-// --- Delete Document (Soft Delete + User Tracking) ---
+// --- Delete Document ---
 export const deleteDocument = async (req, res) => {
     try {
         const { id } = req.params;
         
-        // บันทึกคนลบ (deletedBy)
         await Document.findByIdAndUpdate(id, { 
             isDeleted: true, 
             deletedAt: new Date(),
@@ -70,17 +73,16 @@ export const deleteDocument = async (req, res) => {
     }
 };
 
-// --- (Optional) Get Documents in Folder ---
+// --- Get Documents (ถ้ามี) ---
 export const getDocuments = async (req, res) => {
     try {
         const { folderId } = req.query;
-        // ดึงเฉพาะที่ยังไม่ถูกลบ
         const docs = await Document.find({ 
             folderId: folderId || '0-0', 
             isDeleted: false 
         }).sort({ createdAt: -1 });
         
-        res.json({ files: docs });
+        res.json(docs); // ส่งกลับเป็น Array ตรงๆ (เพื่อให้ Frontend รับง่าย)
     } catch (err) {
         res.status(500).json({ message: "Server error" });
     }
