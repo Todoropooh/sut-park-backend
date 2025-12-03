@@ -4,7 +4,7 @@ import News from '../models/newsModel.js';
 import Activity from '../models/activityModel.js';
 import Folder from '../models/folderModel.js';
 import Document from '../models/documentModel.js';
-import Employee from '../models/employee.js'; // 🟢 เช็คชื่อไฟล์ให้ตรง (employee.js หรือ Employee.js)
+import Employee from '../models/Employee.js'; // 🟢 เช็คชื่อไฟล์ให้ตรง (employee.js หรือ Employee.js)
 
 import fs from 'fs';
 import path from 'path';
