@@ -1,17 +1,22 @@
-// controllers/newsController.js
+// src/controllers/newsController.js
 
 import News from '../models/newsModel.js';
-import SiteStat from '../models/siteStatModel.js';
+import SiteStat from '../models/siteStatModel.js'; // อย่าลืมไฟล์นี้นะครับ
 import mongoose from 'mongoose';
 
 // --- Public Get ---
 export const getPublicNews = async (req, res) => {
     try {
-        SiteStat.findOneAndUpdate(
-            { name: 'totalPageViews' },
-            { $inc: { count: 1 } },
-            { upsert: true, new: true }
-        ).exec(); 
+        // นับยอดวิว (ถ้ามีไฟล์ SiteStat แล้ว)
+        try {
+            await SiteStat.findOneAndUpdate(
+                { name: 'totalPageViews' },
+                { $inc: { count: 1 } },
+                { upsert: true, new: true }
+            );
+        } catch (statError) {
+            console.warn("SiteStat Error:", statError.message);
+        }
 
         const news = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
         res.json(news);
@@ -48,7 +53,7 @@ export const getNewsById = async (req, res) => {
 export const createNews = async (req, res) => {
     const { title, category, content, startDate, endDate } = req.body;
     
-    // ⭐️ [Cloudinary] รับ URL จาก req.file.path
+    // ⭐️ [Cloudinary] เมื่อใช้ CloudinaryStorage, req.file.path จะเป็น URL ของรูปบน Cloudinary เลย
     const imageUrl = req.file ? req.file.path : null;
     
     if (!title || !content) { return res.status(400).json({ message: 'กรุณากรอกหัวข้อ และเนื้อหาข่าว' }); }
@@ -56,7 +61,7 @@ export const createNews = async (req, res) => {
     try {
         const newNewsItem = new News({ 
             title, category: category || 'ทั่วไป', content, 
-            imageUrl, // บันทึก URL เต็มๆ
+            imageUrl, // เก็บ URL จาก Cloudinary
             publishedAt: new Date(),
             startDate: startDate || null,
             endDate: endDate || null,
@@ -86,7 +91,7 @@ export const updateNews = async (req, res) => {
             endDate: endDate || null
         };
         
-        // ⭐️ ถ้ามีรูปใหม่ ใช้ URL จาก Cloudinary เลย
+        // ⭐️ ถ้ามีรูปใหม่มา (req.file ไม่เป็น undefined) ให้ใช้ URL ใหม่จาก Cloudinary
         if (req.file) { 
             updateData.imageUrl = req.file.path;
         }
@@ -110,7 +115,7 @@ export const deleteNews = async (req, res) => {
             { 
                 isDeleted: true, 
                 deletedAt: new Date(),
-                deletedBy: req.user ? req.user._id : null // 👈 สำคัญ: บันทึกคนลบ
+                deletedBy: req.user ? req.user._id : null // 👈 บันทึกคนที่กดลบ
             },
             { new: true }
         );
