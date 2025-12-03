@@ -1,20 +1,26 @@
-// routes/serviceItemRoutes.js
+// src/routes/serviceItemRoutes.js
 
-import express from "express";
-import uploadCloud from "../middleware/uploadCloudinary.js"; // ⭐️ เรียกใช้ตัวอัปโหลด Cloudinary
-import * as serviceItemController from "../controllers/serviceItemController.js";
+import express from 'express';
+import {
+  getServiceItems,
+  getServiceItemById,
+  createServiceItem,
+  updateServiceItem,
+  deleteServiceItem
+} from '../controllers/serviceItemController.js';
+
+import { authenticateToken } from '../middleware/authMiddleware.js'; 
+
+// 🟢 กลับมาใช้แบบเดิม (Named Import)
+import { upload } from '../middleware/uploadMiddleware.js'; 
 
 const router = express.Router();
 
-// Get
-router.get("/", serviceItemController.getServiceItems);
-router.get("/public", serviceItemController.getPublicServiceItems);
+router.get('/', getServiceItems);
+router.get('/:id', getServiceItemById);
 
-// Create & Update (เปลี่ยน middleware ตรงกลางเป็น uploadCloud)
-router.post("/", uploadCloud.single("image"), serviceItemController.createServiceItem);
-router.put("/:id", uploadCloud.single("image"), serviceItemController.updateServiceItem);
+router.post('/', authenticateToken, upload.single('image'), createServiceItem);
+router.put('/:id', authenticateToken, upload.single('image'), updateServiceItem);
+router.delete('/:id', authenticateToken, deleteServiceItem);
 
-// Delete
-router.delete("/:id", serviceItemController.deleteServiceItem);
-
-export default router;
+export default router;  
