@@ -1,89 +1,124 @@
-import Employee from "../models/Employee.js";
+// 🟢 แก้ import ให้เป็น Employee.js (E ใหญ่)
+import Employee from '../models/Employee.js'; 
+import mongoose from 'mongoose';
 
-// 1. ดึงข้อมูลพนักงานทั้งหมด (สำหรับ Admin)
+// --- 1. Get All ---
 export const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find().sort({ createdAt: -1 });
-    res.status(200).json(employees);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const employees = await Employee.find({ isDeleted: false }).sort({ createdAt: -1 });
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
 
-// 2. เพิ่มพนักงานใหม่
+// --- 2. Get By ID ---
+export const getEmployeeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findOne({ _id: id, isDeleted: false });
+    if (!employee) return res.status(404).json({ message: "ไม่พบข้อมูล" });
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
+  }
+};
+
+// --- 3. Create (รับ Email/Phone/Image) ---
 export const createEmployee = async (req, res) => {
   try {
-    const newEmployee = new Employee(req.body);
-    const savedEmployee = await newEmployee.save();
-    res.status(201).json(savedEmployee);
-  } catch (err) {
-    if (err.code === 11000) {
-        return res.status(400).json({ message: "รหัสพนักงานนี้มีอยู่ในระบบแล้ว" });
-    }
-    res.status(400).json({ message: err.message });
-  }
-};
+    const { 
+        employeeId, firstName, lastName, firstNameEn, lastNameEn, 
+        position, division, email, phoneNumber 
+    } = req.body;
 
-// 3. แก้ไขข้อมูลพนักงาน
-export const updateEmployee = async (req, res) => {
-  try {
-    const updatedEmployee = await Employee.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
-    );
-    res.status(200).json(updatedEmployee);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+    const imageUrl = req.file ? req.file.path : null;
 
-// 4. ลบพนักงาน
-export const deleteEmployee = async (req, res) => {
-  try {
-    await Employee.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "ลบข้อมูลพนักงานเรียบร้อยแล้ว" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// 5. นำเข้าข้อมูลหลายคน (Import Excel)
-export const importEmployees = async (req, res) => {
-  try {
-    const employeesData = req.body;
-
-    if (!Array.isArray(employeesData) || employeesData.length === 0) {
-      return res.status(400).json({ message: "ไม่พบข้อมูล หรือรูปแบบข้อมูลไม่ถูกต้อง" });
+    if (!employeeId || !firstName || !lastName) {
+        return res.status(400).json({ message: "กรุณากรอกข้อมูลสำคัญให้ครบ" });
     }
 
-    const result = await Employee.insertMany(employeesData, { ordered: false });
-
-    res.status(201).json({ 
-      message: "นำเข้าข้อมูลสำเร็จ", 
-      count: result.length,
-      data: result
+    const newEmployee = new Employee({
+        employeeId, firstName, lastName, firstNameEn, lastNameEn,
+        position, division,
+        email,        // บันทึก email
+        phoneNumber,  // บันทึกเบอร์
+        imageUrl,     // บันทึกรูป
+        isDeleted: false
     });
 
-  } catch (err) {
-    if (err.code === 11000 || err.writeErrors) {
-        return res.status(200).json({ 
-            message: `นำเข้าสำเร็จบางส่วน (${err.insertedDocs?.length || 0} รายการ), พบข้อมูลซ้ำหรือผิดพลาดบางรายการ`,
-            count: err.insertedDocs?.length || 0,
-            partial: true
-        });
-    }
-    res.status(500).json({ message: err.message });
+    await newEmployee.save();
+    res.status(201).json({ status: "success", message: "เพิ่มพนักงานสำเร็จ" });
+
+  } catch (error) {
+    console.error(error);
+    if (error.code === 11000) return res.status(400).json({ message: "รหัสพนักงานนี้มีอยู่แล้ว" });
+    res.status(500).json({ message: "เกิดข้อผิดพลาดบนเซิร์ฟเวอร์" });
   }
 };
 
-// 6. ⭐️ [ใหม่] ดึงข้อมูลพนักงาน (สำหรับ Public / หน้า Test)
-export const getPublicEmployees = async (req, res) => {
+// --- 4. Update (รับ Email/Phone/Image) ---
+export const updateEmployee = async (req, res) => {
   try {
-    // เรียงลำดับตามต้องการ (เช่น เอาล่าสุดขึ้นก่อน)
-    const employees = await Employee.find().sort({ createdAt: -1 });
-    res.status(200).json(employees);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const { id } = req.params;
+    const { 
+        employeeId, firstName, lastName, firstNameEn, lastNameEn, 
+        position, division, email, phoneNumber 
+    } = req.body;
+
+    const updateData = {
+        employeeId, firstName, lastName, firstNameEn, lastNameEn,
+        position, division,
+        email,      // อัปเดต email
+        phoneNumber // อัปเดตเบอร์
+    };
+
+    if (req.file) {
+        updateData.imageUrl = req.file.path;
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(id, updateData, { new: true });
+    
+    if (!updatedEmployee) return res.status(404).json({ message: "ไม่พบข้อมูล" });
+
+    res.json({ status: "success", message: "แก้ไขข้อมูลสำเร็จ", data: updatedEmployee });
+
+  } catch (error) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
+};
+
+// --- 5. Delete (บันทึกคนลบ) ---
+export const deleteEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Employee.findByIdAndUpdate(id, { 
+        isDeleted: true, 
+        deletedAt: new Date(),
+        deletedBy: req.user ? req.user._id : null // 🟢 บันทึกคนลบ
+    });
+    res.json({ message: "ลบข้อมูลสำเร็จ" });
+  } catch (error) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
+  }
+};
+
+// --- 6. Import ---
+export const importEmployees = async (req, res) => {
+    try {
+        const employees = req.body;
+        if (!Array.isArray(employees)) return res.status(400).json({ message: "Format ข้อมูลไม่ถูกต้อง" });
+
+        let count = 0;
+        for (const emp of employees) {
+            const exists = await Employee.findOne({ employeeId: emp.employeeId });
+            if (!exists) {
+                await new Employee({ ...emp, isDeleted: false }).save();
+                count++;
+            }
+        }
+        res.json({ message: "Import สำเร็จ", count });
+    } catch (error) {
+        res.status(500).json({ message: "Import ล้มเหลว" });
+    }
 };
