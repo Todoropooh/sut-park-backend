@@ -1,20 +1,22 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceItemModel.js'; // 🟢 เช็คชื่อไฟล์ให้ตรงกับที่มีจริง
+import Service from '../models/serviceItemModel.js'; 
 import mongoose from 'mongoose';
 
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [TEST MODE] ดึงมาทั้งหมดโดยไม่มีเงื่อนไข (Empty Filter)
-    const services = await Service.find({}).sort({ createdAt: -1 });
-    
-    // 🖨️ ปริ้นท์บอกใน Log ว่าเจอกี่อัน (ไปดูใน Render Logs)
-    console.log(`🔍 Debug Service: Found ${services.length} items`);
+    // 🟢 [FIXED] เงื่อนไขที่ถูกต้อง:
+    // ดึงข้อมูลที่ "isDeleted เป็น false" หรือ "ไม่มี field isDeleted เลย (ข้อมูลเก่า)"
+    const services = await Service.find({
+      $or: [
+        { isDeleted: false },           // ข้อมูลใหม่ที่ยังไม่ลบ
+        { isDeleted: { $exists: false } } // ข้อมูลเก่าที่ไม่มี field นี้
+      ]
+    }).sort({ createdAt: -1 });
     
     res.json(services);
   } catch (error) {
-    console.error("Get Service Error:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
   }
 };
@@ -27,8 +29,14 @@ export const getServiceItemById = async (req, res) => {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
     
-    // 🟢 [TEST MODE] ดึงโดยไม่สนใจ isDeleted
-    const service = await Service.findById(id);
+    // 🟢 [FIXED] ใช้เงื่อนไขเดียวกัน
+    const service = await Service.findOne({ 
+        _id: id, 
+        $or: [
+            { isDeleted: false }, 
+            { isDeleted: { $exists: false } }
+        ]
+    });
     
     if (!service) {
         return res.status(404).json({ message: "ไม่พบข้อมูลบริการนี้" });
@@ -102,6 +110,7 @@ export const deleteServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
     
+    // บันทึกคนลบ (deletedBy)
     const deletedService = await Service.findByIdAndUpdate(
         id, 
         { 
