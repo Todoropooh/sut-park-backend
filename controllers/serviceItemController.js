@@ -1,18 +1,14 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceItemModel.js'; // 🟢 แก้ชื่อไฟล์ให้ตรงแล้ว
+import Service from '../models/serviceItemModel.js'; // เช็คชื่อไฟล์ให้ตรงกับที่มีจริง
 import mongoose from 'mongoose';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// --- 1. Get All (Public) ---
+// --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    const services = await Service.find({ isDeleted: false }).sort({ createdAt: -1 });
+    // 🟢 [FIX] แก้เงื่อนไข: เอาทั้ง "isDeleted: false" และ "ไม่มี field isDeleted" (ข้อมูลเก่า)
+    // $ne: true แปลว่า "ไม่เท่ากับ true" (รวมทั้ง false และ null/undefined)
+    const services = await Service.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
@@ -27,7 +23,11 @@ export const getServiceItemById = async (req, res) => {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
     
-    const service = await Service.findOne({ _id: id, isDeleted: false });
+    // 🟢 [FIX] แก้เงื่อนไขเหมือนกัน
+    const service = await Service.findOne({ 
+        _id: id, 
+        isDeleted: { $ne: true } 
+    });
     
     if (!service) {
         return res.status(404).json({ message: "ไม่พบข้อมูลบริการนี้" });
@@ -43,13 +43,9 @@ export const getServiceItemById = async (req, res) => {
 export const createServiceItem = async (req, res) => {
   try {
     const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
-    
-    // รับ URL รูปจาก Cloudinary
     const imageUrl = req.file ? req.file.path : null;
 
-    if (!title) {
-        return res.status(400).json({ message: "กรุณากรอกชื่อบริการ/ทุน" });
-    }
+    if (!title) return res.status(400).json({ message: "กรุณากรอกชื่อบริการ/ทุน" });
 
     const newService = new Service({ 
         title, 
@@ -86,9 +82,7 @@ export const updateServiceItem = async (req, res) => {
         link: link || ''
     };
 
-    if (req.file) {
-      updateData.imageUrl = req.file.path;
-    }
+    if (req.file) updateData.imageUrl = req.file.path;
 
     const updatedService = await Service.findByIdAndUpdate(id, updateData, { new: true });
     
