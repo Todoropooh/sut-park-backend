@@ -12,9 +12,13 @@ import { fileURLToPath } from 'url';
 // Middleware
 import { authenticateToken, isAdmin } from "./middleware/authMiddleware.js";
 
-// Controllers
+// Controllers (นำกลับมาเพื่อใช้กับ Public Route เดิม)
 import * as mainController from "./controllers/mainController.js";
 import * as contactController from "./controllers/contactController.js";
+import * as newsController from "./controllers/newsController.js";
+import * as activityController from "./controllers/activityController.js";
+import * as serviceItemController from "./controllers/serviceItemController.js";
+import * as employeeController from "./controllers/employeeController.js"; // (ต้องมีไฟล์นี้)
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
@@ -36,7 +40,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 const host = "0.0.0.0";
 
-// Fix __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -47,11 +50,16 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Middleware
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --- Public Routes ---
+// --- 🟢 Public Routes (แบบเดิมที่ test.html เรียกใช้) ---
+// เรา map เส้นทาง /public/... ให้วิ่งไปหา Controller โดยตรงเหมือนเดิมครับ
+app.get("/public/news", newsController.getPublicNews);
+app.get("/public/activities", activityController.getPublicActivities);
+app.get("/public/services", serviceItemController.getServiceItems); // หรือ getPublicServiceItems ถ้ามี
+app.get("/public/employees", employeeController.getEmployees);      // หรือ getPublicEmployees ถ้ามี
+
 app.get("/api/test", mainController.getApiTest);
 app.post("/submit-form", contactController.createPublicContact);
 app.post("/api/login", mainController.loginUser);
@@ -59,7 +67,7 @@ app.post("/api/login", mainController.loginUser);
 // File serving
 app.use("/public/files", fileRoutes);
 
-// --- API Routes ---
+// --- API Routes (สำหรับ Admin Dashboard) ---
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/activities", activityRoutes);
@@ -76,17 +84,13 @@ app.use("/api/employees", employeeRoutes);
 console.log("Connecting to MongoDB...");
 mongoose
   .connect(MONGO_URI)
-  .then(async () => { // 🟢 เพิ่ม async เพื่อให้ใช้ await ข้างในได้
+  .then(async () => {
     console.log("✅ MongoDB connected successfully!");
-
-    // 🟢 [FIX] คำสั่งลบ Index เก่าทิ้ง (Run Once)
+    
+    // (Optional) ลบ Ghost Index ถ้ายังมีปัญหา
     try {
         await mongoose.connection.collection('documents').dropIndex('storedFilename_1');
-        console.log("🔥 LOB INDEX 'storedFilename_1' TING LEAW KRUB! (Index Dropped)");
-    } catch (e) {
-        // ถ้า Index ไม่มีอยู่แล้ว หรือลบไปแล้ว จะเข้าตรงนี้ ไม่เป็นไรครับ
-        console.log("ℹ️ Index might already be deleted or not found (Safe to ignore)");
-    }
+    } catch (e) {}
 
     app.listen(port, host, () => {
       console.log(`✅ Server running at http://${host}:${port}`);
