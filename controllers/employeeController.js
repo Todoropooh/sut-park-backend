@@ -1,11 +1,18 @@
-// 🟢 แก้ import ให้เป็น Employee.js (E ใหญ่)
-import Employee from '../models/Employee.js'; 
+// src/controllers/employeeController.js
+
+import Employee from '../models/Employee.js'; // เช็คชื่อไฟล์ให้ตรง (E ใหญ่)
 import mongoose from 'mongoose';
 
 // --- 1. Get All ---
 export const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find({ isDeleted: false }).sort({ createdAt: -1 });
+    // 🟢 [RESCUE MODE] ชุบชีวิตพนักงาน! (เติม isDeleted: false ให้ทุกคน)
+    await Employee.updateMany({}, { $set: { isDeleted: false } });
+
+    // ดึงข้อมูลทั้งหมด
+    const employees = await Employee.find({}).sort({ createdAt: -1 });
+    
+    console.log(`✨ Employee Rescue: Found ${employees.length} people`);
     res.json(employees);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
@@ -16,7 +23,12 @@ export const getEmployees = async (req, res) => {
 export const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const employee = await Employee.findOne({ _id: id, isDeleted: false });
+    // 🟢 [Fix Query] ให้หาเจอแม้ไม่มี isDeleted
+    const employee = await Employee.findOne({ 
+        _id: id, 
+        isDeleted: { $ne: true } 
+    });
+    
     if (!employee) return res.status(404).json({ message: "ไม่พบข้อมูล" });
     res.json(employee);
   } catch (error) {
@@ -24,7 +36,7 @@ export const getEmployeeById = async (req, res) => {
   }
 };
 
-// --- 3. Create (รับ Email/Phone/Image) ---
+// --- 3. Create ---
 export const createEmployee = async (req, res) => {
   try {
     const { 
@@ -41,10 +53,10 @@ export const createEmployee = async (req, res) => {
     const newEmployee = new Employee({
         employeeId, firstName, lastName, firstNameEn, lastNameEn,
         position, division,
-        email,        // บันทึก email
-        phoneNumber,  // บันทึกเบอร์
-        imageUrl,     // บันทึกรูป
-        isDeleted: false
+        email,        
+        phoneNumber,  
+        imageUrl,     
+        isDeleted: false // ข้อมูลใหม่
     });
 
     await newEmployee.save();
@@ -57,7 +69,7 @@ export const createEmployee = async (req, res) => {
   }
 };
 
-// --- 4. Update (รับ Email/Phone/Image) ---
+// --- 4. Update ---
 export const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
@@ -69,8 +81,8 @@ export const updateEmployee = async (req, res) => {
     const updateData = {
         employeeId, firstName, lastName, firstNameEn, lastNameEn,
         position, division,
-        email,      // อัปเดต email
-        phoneNumber // อัปเดตเบอร์
+        email,      
+        phoneNumber 
     };
 
     if (req.file) {
@@ -88,14 +100,14 @@ export const updateEmployee = async (req, res) => {
   }
 };
 
-// --- 5. Delete (บันทึกคนลบ) ---
+// --- 5. Delete (Soft Delete) ---
 export const deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
     await Employee.findByIdAndUpdate(id, { 
         isDeleted: true, 
         deletedAt: new Date(),
-        deletedBy: req.user ? req.user._id : null // 🟢 บันทึกคนลบ
+        deletedBy: req.user ? req.user._id : null 
     });
     res.json({ message: "ลบข้อมูลสำเร็จ" });
   } catch (error) {
@@ -113,6 +125,7 @@ export const importEmployees = async (req, res) => {
         for (const emp of employees) {
             const exists = await Employee.findOne({ employeeId: emp.employeeId });
             if (!exists) {
+                // อย่าลืมใส่ isDeleted: false ตอน import
                 await new Employee({ ...emp, isDeleted: false }).save();
                 count++;
             }
