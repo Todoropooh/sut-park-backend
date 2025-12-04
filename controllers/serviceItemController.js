@@ -1,26 +1,22 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceItemModel.js'; // 🟢 เช็คชื่อไฟล์ให้ตรง
+import Service from '../models/serviceItemModel.js'; 
 import mongoose from 'mongoose';
 
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [DEBUG] แอบดูหน่อยว่าในถังข้อมูลมีของไหม (ดูใน Logs Render)
-    const totalCount = await Service.countDocuments({});
-    console.log(`📊 DEBUG: Total items in DB: ${totalCount}`);
+    // 🟢 [RESCUE MODE] ชุบชีวิตข้อมูลทั้งหมด!
+    // คำสั่งนี้จะบังคับแก้ isDeleted ของทุกอันให้เป็น false (กู้คืนชีพ)
+    await Service.updateMany({}, { $set: { isDeleted: false } });
 
-    // 🟢 [FIXED - The Silver Bullet] 
-    // ใช้ $ne: true (ไม่เท่ากับ true) 
-    // มันจะดึงทั้ง (isDeleted: false) และ (ไม่มี field isDeleted) มาทั้งหมดครับ
-    const services = await Service.find({ 
-        isDeleted: { $ne: true } 
-    }).sort({ createdAt: -1 });
+    // จากนั้นดึงข้อมูลทั้งหมดออกมา
+    const services = await Service.find({}).sort({ createdAt: -1 });
     
-    console.log(`✅ DEBUG: Items returned to Frontend: ${services.length}`);
+    console.log(`✨ Rescue Success: Returned ${services.length} items to Frontend`);
     res.json(services);
   } catch (error) {
-    console.error(error);
+    console.error("Rescue Error:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
   }
 };
@@ -32,24 +28,15 @@ export const getServiceItemById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
-    
-    // 🟢 [FIXED] ใช้เงื่อนไขเดียวกัน ($ne: true)
-    const service = await Service.findOne({ 
-        _id: id, 
-        isDeleted: { $ne: true } 
-    });
-    
-    if (!service) {
-        return res.status(404).json({ message: "ไม่พบข้อมูลบริการนี้" });
-    }
-    
+    const service = await Service.findById(id); // ดึงมาเลยไม่สน isDeleted
+    if (!service) return res.status(404).json({ message: "ไม่พบข้อมูล" });
     res.json(service);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
 
-// --- 3. Create (เหมือนเดิม) ---
+// --- 3. Create ---
 export const createServiceItem = async (req, res) => {
   try {
     const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
@@ -66,7 +53,7 @@ export const createServiceItem = async (req, res) => {
         endDate: endDate || null,
         rewardAmount: rewardAmount || 0,
         link: link || '',
-        isDeleted: false, // ข้อมูลใหม่ใส่ false ไว้ชัดเจน
+        isDeleted: false,
         deletedAt: null
     });
 
@@ -78,7 +65,7 @@ export const createServiceItem = async (req, res) => {
   }
 };
 
-// --- 4. Update (เหมือนเดิม) ---
+// --- 4. Update ---
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
@@ -106,7 +93,7 @@ export const updateServiceItem = async (req, res) => {
   }
 };
 
-// --- 5. Delete (เหมือนเดิม) ---
+// --- 5. Delete (Soft Delete) ---
 export const deleteServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
