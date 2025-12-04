@@ -1,14 +1,21 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceItemModel.js'; // เช็คชื่อไฟล์ให้ตรงกับที่มีจริง
+import Service from '../models/serviceItemModel.js'; // 🟢 เช็คชื่อไฟล์ Model ให้ตรงกับที่มีจริง
 import mongoose from 'mongoose';
 
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [FIX] แก้เงื่อนไข: เอาทั้ง "isDeleted: false" และ "ไม่มี field isDeleted" (ข้อมูลเก่า)
-    // $ne: true แปลว่า "ไม่เท่ากับ true" (รวมทั้ง false และ null/undefined)
-    const services = await Service.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+    // 🟢 [FIX] แก้เงื่อนไขการดึงข้อมูล
+    // ความหมาย: เอาอันที่ "isDeleted ไม่เท่ากับ true" 
+    // (ซึ่งจะรวมถึง: อันที่เป็น false และ อันที่ไม่มีฟิลด์นี้เลย/ข้อมูลเก่า)
+    const services = await Service.find({ 
+        $or: [
+            { isDeleted: false }, 
+            { isDeleted: { $exists: false } }
+        ]
+    }).sort({ createdAt: -1 });
+    
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
@@ -23,10 +30,13 @@ export const getServiceItemById = async (req, res) => {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
     
-    // 🟢 [FIX] แก้เงื่อนไขเหมือนกัน
+    // 🟢 [FIX] แก้เงื่อนไขให้เหมือนกัน
     const service = await Service.findOne({ 
         _id: id, 
-        isDeleted: { $ne: true } 
+        $or: [
+            { isDeleted: false }, 
+            { isDeleted: { $exists: false } }
+        ]
     });
     
     if (!service) {
