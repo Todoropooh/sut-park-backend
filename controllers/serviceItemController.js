@@ -6,17 +6,14 @@ import mongoose from 'mongoose';
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [RESCUE MODE] ชุบชีวิตข้อมูลทั้งหมด!
-    // คำสั่งนี้จะบังคับแก้ isDeleted ของทุกอันให้เป็น false (กู้คืนชีพ)
-    await Service.updateMany({}, { $set: { isDeleted: false } });
-
-    // จากนั้นดึงข้อมูลทั้งหมดออกมา
-    const services = await Service.find({}).sort({ createdAt: -1 });
+    // 🟢 [FINAL] ปิดโหมดชุบชีวิตแล้ว (ลบ updateMany ออก)
+    // ดึงข้อมูลทั้งหมด ที่สถานะ "ไม่ใช่ถูกลบ" (รวมถึงข้อมูลเก่าที่ไม่มี field นี้ด้วย)
+    const services = await Service.find({ 
+        isDeleted: { $ne: true } 
+    }).sort({ createdAt: -1 });
     
-    console.log(`✨ Rescue Success: Returned ${services.length} items to Frontend`);
     res.json(services);
   } catch (error) {
-    console.error("Rescue Error:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
   }
 };
@@ -28,8 +25,16 @@ export const getServiceItemById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
-    const service = await Service.findById(id); // ดึงมาเลยไม่สน isDeleted
-    if (!service) return res.status(404).json({ message: "ไม่พบข้อมูล" });
+    
+    const service = await Service.findOne({ 
+        _id: id, 
+        isDeleted: { $ne: true } 
+    });
+    
+    if (!service) {
+        return res.status(404).json({ message: "ไม่พบข้อมูลบริการนี้" });
+    }
+    
     res.json(service);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
