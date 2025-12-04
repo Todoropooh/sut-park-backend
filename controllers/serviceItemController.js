@@ -1,23 +1,20 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceItemModel.js'; // 🟢 เช็คชื่อไฟล์ Model ให้ตรงกับที่มีจริง
+import Service from '../models/serviceItemModel.js'; // 🟢 เช็คชื่อไฟล์ให้ตรงกับที่มีจริง
 import mongoose from 'mongoose';
 
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [FIX] แก้เงื่อนไขการดึงข้อมูล
-    // ความหมาย: เอาอันที่ "isDeleted ไม่เท่ากับ true" 
-    // (ซึ่งจะรวมถึง: อันที่เป็น false และ อันที่ไม่มีฟิลด์นี้เลย/ข้อมูลเก่า)
-    const services = await Service.find({ 
-        $or: [
-            { isDeleted: false }, 
-            { isDeleted: { $exists: false } }
-        ]
-    }).sort({ createdAt: -1 });
+    // 🟢 [TEST MODE] ดึงมาทั้งหมดโดยไม่มีเงื่อนไข (Empty Filter)
+    const services = await Service.find({}).sort({ createdAt: -1 });
+    
+    // 🖨️ ปริ้นท์บอกใน Log ว่าเจอกี่อัน (ไปดูใน Render Logs)
+    console.log(`🔍 Debug Service: Found ${services.length} items`);
     
     res.json(services);
   } catch (error) {
+    console.error("Get Service Error:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
   }
 };
@@ -30,14 +27,8 @@ export const getServiceItemById = async (req, res) => {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
     
-    // 🟢 [FIX] แก้เงื่อนไขให้เหมือนกัน
-    const service = await Service.findOne({ 
-        _id: id, 
-        $or: [
-            { isDeleted: false }, 
-            { isDeleted: { $exists: false } }
-        ]
-    });
+    // 🟢 [TEST MODE] ดึงโดยไม่สนใจ isDeleted
+    const service = await Service.findById(id);
     
     if (!service) {
         return res.status(404).json({ message: "ไม่พบข้อมูลบริการนี้" });
