@@ -1,22 +1,26 @@
 // src/controllers/serviceItemController.js
 
-import Service from '../models/serviceItemModel.js'; 
+import Service from '../models/serviceItemModel.js'; // 🟢 เช็คชื่อไฟล์ให้ตรง
 import mongoose from 'mongoose';
 
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [FIXED] เงื่อนไขที่ถูกต้อง:
-    // ดึงข้อมูลที่ "isDeleted เป็น false" หรือ "ไม่มี field isDeleted เลย (ข้อมูลเก่า)"
-    const services = await Service.find({
-      $or: [
-        { isDeleted: false },           // ข้อมูลใหม่ที่ยังไม่ลบ
-        { isDeleted: { $exists: false } } // ข้อมูลเก่าที่ไม่มี field นี้
-      ]
+    // 🟢 [DEBUG] แอบดูหน่อยว่าในถังข้อมูลมีของไหม (ดูใน Logs Render)
+    const totalCount = await Service.countDocuments({});
+    console.log(`📊 DEBUG: Total items in DB: ${totalCount}`);
+
+    // 🟢 [FIXED - The Silver Bullet] 
+    // ใช้ $ne: true (ไม่เท่ากับ true) 
+    // มันจะดึงทั้ง (isDeleted: false) และ (ไม่มี field isDeleted) มาทั้งหมดครับ
+    const services = await Service.find({ 
+        isDeleted: { $ne: true } 
     }).sort({ createdAt: -1 });
     
+    console.log(`✅ DEBUG: Items returned to Frontend: ${services.length}`);
     res.json(services);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
   }
 };
@@ -29,13 +33,10 @@ export const getServiceItemById = async (req, res) => {
         return res.status(400).json({ message: "ID ไม่ถูกต้อง" });
     }
     
-    // 🟢 [FIXED] ใช้เงื่อนไขเดียวกัน
+    // 🟢 [FIXED] ใช้เงื่อนไขเดียวกัน ($ne: true)
     const service = await Service.findOne({ 
         _id: id, 
-        $or: [
-            { isDeleted: false }, 
-            { isDeleted: { $exists: false } }
-        ]
+        isDeleted: { $ne: true } 
     });
     
     if (!service) {
@@ -48,7 +49,7 @@ export const getServiceItemById = async (req, res) => {
   }
 };
 
-// --- 3. Create ---
+// --- 3. Create (เหมือนเดิม) ---
 export const createServiceItem = async (req, res) => {
   try {
     const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
@@ -65,7 +66,7 @@ export const createServiceItem = async (req, res) => {
         endDate: endDate || null,
         rewardAmount: rewardAmount || 0,
         link: link || '',
-        isDeleted: false,
+        isDeleted: false, // ข้อมูลใหม่ใส่ false ไว้ชัดเจน
         deletedAt: null
     });
 
@@ -77,7 +78,7 @@ export const createServiceItem = async (req, res) => {
   }
 };
 
-// --- 4. Update ---
+// --- 4. Update (เหมือนเดิม) ---
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
@@ -105,12 +106,11 @@ export const updateServiceItem = async (req, res) => {
   }
 };
 
-// --- 5. Delete (Soft Delete) ---
+// --- 5. Delete (เหมือนเดิม) ---
 export const deleteServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // บันทึกคนลบ (deletedBy)
     const deletedService = await Service.findByIdAndUpdate(
         id, 
         { 
