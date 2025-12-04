@@ -6,13 +6,12 @@ import mongoose from 'mongoose';
 // --- 1. Get All ---
 export const getEmployees = async (req, res) => {
   try {
-    // 🟢 [RESCUE MODE] ชุบชีวิตพนักงาน! (เติม isDeleted: false ให้ทุกคน)
-    await Employee.updateMany({}, { $set: { isDeleted: false } });
-
-    // ดึงข้อมูลทั้งหมด
-    const employees = await Employee.find({}).sort({ createdAt: -1 });
+    // 🟢 [FINAL] ปิดโหมดกู้ชีพแล้ว (ลบ updateMany ออก)
+    // ดึงข้อมูลทั้งหมด ที่สถานะ "ไม่ใช่ถูกลบ" (รวมถึงข้อมูลเก่าที่ไม่มี field นี้ด้วย)
+    const employees = await Employee.find({ 
+        isDeleted: { $ne: true } 
+    }).sort({ createdAt: -1 });
     
-    console.log(`✨ Employee Rescue: Found ${employees.length} people`);
     res.json(employees);
   } catch (error) {
     res.status(500).json({ message: "เกิดข้อผิดพลาด" });
@@ -23,7 +22,7 @@ export const getEmployees = async (req, res) => {
 export const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
-    // 🟢 [Fix Query] ให้หาเจอแม้ไม่มี isDeleted
+    
     const employee = await Employee.findOne({ 
         _id: id, 
         isDeleted: { $ne: true } 
@@ -56,7 +55,7 @@ export const createEmployee = async (req, res) => {
         email,        
         phoneNumber,  
         imageUrl,     
-        isDeleted: false // ข้อมูลใหม่
+        isDeleted: false 
     });
 
     await newEmployee.save();
@@ -125,7 +124,6 @@ export const importEmployees = async (req, res) => {
         for (const emp of employees) {
             const exists = await Employee.findOne({ employeeId: emp.employeeId });
             if (!exists) {
-                // อย่าลืมใส่ isDeleted: false ตอน import
                 await new Employee({ ...emp, isDeleted: false }).save();
                 count++;
             }
