@@ -9,7 +9,8 @@ import fs from 'fs';
 
 dotenv.config();
 
-// --- 1. Cloudinary (สำหรับรูปภาพ: News, Activity, Employee) ---
+// --- 1. ⭐️ Cloudinary (แก้ไขให้รองรับ PDF) ---
+// ใช้สำหรับ: News, Activity, Employee (ไฟล์จะไม่หายเมื่อ Deploy ใหม่)
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -20,7 +21,10 @@ const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'sut-park-images', // ชื่อโฟลเดอร์บน Cloudinary
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    // ⭐️ 1. เพิ่ม 'pdf' เข้าไปในนี้ครับ
+    allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'pdf'], 
+    // ⭐️ 2. (สำคัญ) บอก Cloudinary ว่าให้จัดการ resource_type แบบ auto (เพื่อรองรับไฟล์ที่ไม่ใช่รูป)
+    resource_type: 'auto', 
   },
 });
 
@@ -28,10 +32,9 @@ export const upload = multer({ storage: imageStorage });
 
 
 // --- 2. Local Storage (สำหรับเอกสาร: Documents) ---
-// ใช้ process.cwd() เพื่อให้ Path ถูกต้องเสมอบน Server (Render)
+// (ส่วนนี้เหมือนเดิม ใช้สำหรับเอกสารราชการที่ยอมให้เก็บ Local ได้ หรือถ้าอยากย้ายไป Cloudinary ก็แก้แบบข้างบนครับ)
 const uploadDir = path.join(process.cwd(), 'uploads/documents');
 
-// สร้างโฟลเดอร์ถ้ายังไม่มี
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
     console.log(`✅ Created directory: ${uploadDir}`);
@@ -39,21 +42,15 @@ if (!fs.existsSync(uploadDir)) {
 
 const documentStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        // เช็คอีกรอบกันเหนียว
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
         cb(null, uploadDir); 
     },
     filename: function (req, file, cb) {
-        // 🟢 [FIX] แก้ชื่อไฟล์ภาษาไทยเพี้ยน
-        // แปลงจาก latin1 (ค่า default ที่ multer อ่านผิด) กลับมาเป็น utf8
+        // แก้ชื่อไฟล์ภาษาไทยเพี้ยน
         const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        
-        // ลบช่องว่างและตัวอักษรพิเศษออกเพื่อความปลอดภัย (เหลือไว้แค่ ไทย อังกฤษ ตัวเลข . - _)
         const safeName = originalName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_ก-๙]/g, '');
-        
-        // สร้างชื่อไฟล์ไม่ซ้ำกัน
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         
         cb(null, uniqueSuffix + '-' + safeName);
