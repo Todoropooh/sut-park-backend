@@ -1,3 +1,5 @@
+// src/middleware/uploadMiddleware.js
+
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
@@ -12,7 +14,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// --- 1. Cloudinary (สำหรับรูปภาพ: News, Activity, Employee) ---
+// --- 1. Cloudinary (สำหรับรูปภาพ) ---
 const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -24,31 +26,30 @@ const imageStorage = new CloudinaryStorage({
 
 export const upload = multer({ storage: imageStorage });
 
-
-// --- 2. Cloudinary (สำหรับเอกสาร: Documents) ---
+// --- 2. ⭐️ Cloudinary (สำหรับเอกสาร) แก้ปัญหานามสกุลหาย ---
 const documentStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'sut-park-documents',
-    allowed_formats: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'],
-    resource_type: 'raw', // สำคัญสำหรับไฟล์เอกสาร
+    // ❌ เอา allowed_formats ออก (เพื่อให้ Cloudinary ไม่พยายามแปลงไฟล์หรือตัดนามสกุล)
+    // allowed_formats: [...], 
+    
+    resource_type: 'raw', // สำคัญมาก! บอกว่าเป็นไฟล์ดิบ
     
     public_id: (req, file) => {
-        // 🟢 [FIX 1] แก้ชื่อภาษาต่างด้าว (Latin1 -> UTF8)
-        // ต้องแปลง Buffer กลับมาเป็น UTF-8 ก่อน ไม่งั้นภาษาไทยจะเป็น alien
+        // 1. แก้ชื่อภาษาต่างด้าว (Latin1 -> UTF8)
         const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
-        // 🟢 [FIX 2] แยกนามสกุลไฟล์ออกมา (สำคัญมากสำหรับ Raw File)
-        // ถ้าไม่ต่อนามสกุลเอง Cloudinary บางทีจะไม่ใส่ให้ ทำให้โหลดมาแล้วเปิดไม่ได้
+        // 2. แยกนามสกุลไฟล์
         const parts = originalName.split('.');
-        const ext = parts.pop(); // นามสกุล (เช่น pdf)
-        const nameWithoutExt = parts.join('.'); // ชื่อไฟล์เฉยๆ
+        const ext = parts.length > 1 ? parts.pop() : ''; 
+        const nameWithoutExt = parts.join('.');
 
-        // 🟢 [FIX 3] ล้างชื่อไฟล์ (เก็บภาษาไทย ก-๙ ไว้)
-        // แทนที่เว้นวรรคด้วย - และลบอักษรพิเศษที่ไม่ใช่ ไทย/อังกฤษ/ตัวเลข
+        // 3. ล้างชื่อไฟล์ (เก็บไทย/อังกฤษ/ตัวเลข)
         const safeName = nameWithoutExt.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_ก-๙]/g, '');
         
-        // ผลลัพธ์: 176526...-ประกาศiso17025รวม.pdf
+        // 4. คืนค่าชื่อไฟล์พร้อมนามสกุล (เช่น ...-iso17025.pdf)
+        // Cloudinary แบบ Raw จะใช้นามสกุลจากตรงนี้เลย
         return `${Date.now()}-${safeName}.${ext}`;
     }
   },
