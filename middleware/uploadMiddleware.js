@@ -1,11 +1,7 @@
-// src/middleware/uploadMiddleware.js
-
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import dotenv from 'dotenv';
-// import path from 'path'; // ไม่ต้องใช้แล้ว เพราะขึ้น Cloud หมด
-// import fs from 'fs';     // ไม่ต้องใช้แล้ว
 
 dotenv.config();
 
@@ -17,13 +13,12 @@ cloudinary.config({
 });
 
 // --- 1. Cloudinary (สำหรับรูปภาพ: News, Activity, Employee) ---
-// รองรับ: JPG, PNG, WEBP และ PDF (สำหรับข่าวประกาศ)
 const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'sut-park-images', // ชื่อโฟลเดอร์บน Cloudinary
+    folder: 'sut-park-images',
     allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'pdf'], 
-    resource_type: 'auto', // ให้ Cloudinary ตัดสินใจเองว่าเป็น image หรือ raw (pdf มักจะเป็น image/raw ได้)
+    resource_type: 'auto', 
   },
 });
 
@@ -39,15 +34,22 @@ const documentStorage = new CloudinaryStorage({
     resource_type: 'raw', // สำคัญสำหรับไฟล์เอกสาร
     
     public_id: (req, file) => {
-        // 🟢 [FIXED] แก้ไข logic การตั้งชื่อไฟล์
-        // 1. แทนที่ช่องว่างด้วยขีด (-)
-        const nameWithExt = file.originalname.replace(/\s+/g, '-');
+        // 🟢 [FIX 1] แก้ชื่อภาษาต่างด้าว (Latin1 -> UTF8)
+        // ต้องแปลง Buffer กลับมาเป็น UTF-8 ก่อน ไม่งั้นภาษาไทยจะเป็น alien
+        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+        // 🟢 [FIX 2] แยกนามสกุลไฟล์ออกมา (สำคัญมากสำหรับ Raw File)
+        // ถ้าไม่ต่อนามสกุลเอง Cloudinary บางทีจะไม่ใส่ให้ ทำให้โหลดมาแล้วเปิดไม่ได้
+        const parts = originalName.split('.');
+        const ext = parts.pop(); // นามสกุล (เช่น pdf)
+        const nameWithoutExt = parts.join('.'); // ชื่อไฟล์เฉยๆ
+
+        // 🟢 [FIX 3] ล้างชื่อไฟล์ (เก็บภาษาไทย ก-๙ ไว้)
+        // แทนที่เว้นวรรคด้วย - และลบอักษรพิเศษที่ไม่ใช่ ไทย/อังกฤษ/ตัวเลข
+        const safeName = nameWithoutExt.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_ก-๙]/g, '');
         
-        // 2. ลบตัวอักษรพิเศษออก แต่ *เก็บจุด (.) ไว้* เพื่อรักษานามสกุลไฟล์
-        const safeName = nameWithExt.replace(/[^a-zA-Z0-9.\-_]/g, '');
-        
-        // ผลลัพธ์: 1765261126060-iso17025.pdf (มี .pdf กลับมาแล้ว!)
-        return `${Date.now()}-${safeName}`;
+        // ผลลัพธ์: 176526...-ประกาศiso17025รวม.pdf
+        return `${Date.now()}-${safeName}.${ext}`;
     }
   },
 });
