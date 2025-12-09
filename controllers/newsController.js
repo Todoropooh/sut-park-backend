@@ -1,13 +1,13 @@
 // src/controllers/newsController.js
 
 import News from '../models/newsModel.js';
-import SiteStat from '../models/siteStatModel.js'; // ต้องมีไฟล์นี้ใน models ด้วยนะครับ
+import SiteStat from '../models/siteStatModel.js'; 
 import mongoose from 'mongoose';
 
 // --- Public Get (คนทั่วไปดู) ---
 export const getPublicNews = async (req, res) => {
     try {
-        // นับยอดวิว (ใส่ try-catch กันเหนียว เผื่อระบบ Stat มีปัญหา ข่าวจะได้ไม่ล่ม)
+        // 1. นับยอดวิว (ใส่ try-catch กันเหนียว)
         try {
             await SiteStat.findOneAndUpdate(
                 { name: 'totalPageViews' },
@@ -18,10 +18,32 @@ export const getPublicNews = async (req, res) => {
             console.warn("SiteStat Error:", statError.message);
         }
 
-        // ดึงเฉพาะข่าวที่ยังไม่ลบ
-        const news = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
-        res.json(news);
+        // 2. ดึงข่าวทั้งหมด
+        const newsList = await News.find({ isDeleted: false }).sort({ publishedAt: -1 });
+
+        // 3. 🟢 [Modified] แปลงข้อมูลก่อนส่ง เพื่อบอกประเภทไฟล์ให้ Frontend รู้
+        const formattedNews = newsList.map(item => {
+            const fileUrl = item.imageUrl || '';
+            
+            // เช็คว่าเป็น PDF หรือไม่?
+            const isPdf = fileUrl.toLowerCase().endsWith('.pdf');
+
+            return {
+                ...item._doc, // ข้อมูลเดิม (title, content, etc.)
+                
+                // ⭐️ เพิ่มตัวแปรนี้ให้เพื่อน! Frontend จะได้เขียนเงื่อนไขง่ายๆ
+                // ถ้าเป็น 'pdf' ให้โชว์ปุ่มโหลด, ถ้า 'image' ให้โชว์รูป
+                fileType: isPdf ? 'pdf' : 'image',
+                
+                // (แถม) ตัวแปรชื่อชัดเจน
+                attachmentUrl: fileUrl
+            };
+        });
+
+        res.json(formattedNews);
+
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
     }
 };
@@ -54,7 +76,7 @@ export const getNewsById = async (req, res) => {
 export const createNews = async (req, res) => {
     const { title, category, content, startDate, endDate } = req.body;
     
-    // ⭐️ [Cloudinary] ถ้ามีไฟล์แนบมา req.file.path จะเป็น URL ของรูปบน Cloudinary เลย
+    // ⭐️ [Cloudinary] รับ URL ไฟล์จาก Cloudinary (middleware จัดการให้แล้ว)
     const imageUrl = req.file ? req.file.path : null;
     
     if (!title || !content) { return res.status(400).json({ message: 'กรุณากรอกหัวข้อ และเนื้อหาข่าว' }); }
@@ -64,7 +86,7 @@ export const createNews = async (req, res) => {
             title, 
             category: category || 'ทั่วไป', 
             content, 
-            imageUrl, // บันทึก URL เต็มๆ ที่ได้จาก Cloudinary
+            imageUrl, // URL เต็มๆ จาก Cloudinary
             publishedAt: new Date(),
             startDate: startDate || null,
             endDate: endDate || null,
@@ -119,14 +141,13 @@ export const deleteNews = async (req, res) => {
             return res.status(400).json({ message: 'ID ข่าวไม่ถูกต้อง' }); 
         }
         
-        // 🟢 FIX: เพิ่มการบันทึก deletedBy
-        // ต้องแน่ใจว่า Route มี authenticateToken กั้นไว้ เพื่อให้ req.user มีค่า
+        // 🟢 FIX: บันทึกคนลบ
         const deletedNews = await News.findByIdAndUpdate(
             id, 
             { 
                 isDeleted: true, 
                 deletedAt: new Date(),
-                deletedBy: req.user ? req.user._id : null // 👈 บันทึก ID ของคนที่กดลบ (สำคัญมาก!)
+                deletedBy: req.user ? req.user._id : null // บันทึก ID คนลบ
             },
             { new: true }
         );
