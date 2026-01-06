@@ -1,11 +1,11 @@
 // controllers/userController.js (Corrected ESM)
 
-// 1. ⭐️ (แก้ไข) เปลี่ยน 'require' ทั้งหมดเป็น 'import'
+// 1. เปลี่ยน 'require' ทั้งหมดเป็น 'import'
 import User from '../models/userModel.js';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 
-// 2. ⭐️ (แก้ไข) เปลี่ยน 'exports.createUser' เป็น 'export const ...'
+// 2. ฟังก์ชันสร้าง User
 export const createUser = async (req, res) => {
     try {
         const { username, password, isAdmin } = req.body;
@@ -21,7 +21,7 @@ export const createUser = async (req, res) => {
     }
 };
 
-// 3. ⭐️ (แก้ไข) เพิ่ม 'export const' หน้าฟังก์ชันที่เหลือ
+// 3. ฟังก์ชันดึง User ทั้งหมด
 export const getAllUsers = async (req, res) => {
     try {
         const users = await User.find({}).select('-password'); 
@@ -31,6 +31,7 @@ export const getAllUsers = async (req, res) => {
     }
 };
 
+// 4. ฟังก์ชันอัปเดต Role (Admin/User)
 export const updateUserRole = async (req, res) => {
     try {
         const { id } = req.params;
@@ -45,6 +46,7 @@ export const updateUserRole = async (req, res) => {
     }
 };
 
+// 5. ฟังก์ชันเปลี่ยนรหัสผ่าน
 export const changeUserPassword = async (req, res) => {
     try {
         const { id } = req.params;
@@ -60,6 +62,7 @@ export const changeUserPassword = async (req, res) => {
     }
 };
 
+// 6. ฟังก์ชันลบ User
 export const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
@@ -71,4 +74,31 @@ export const deleteUser = async (req, res) => {
     }
 };
 
-// (ไม่ต้องมี module.exports อีกต่อไป)
+// ⭐️⭐️ 7. (เพิ่มใหม่) ฟังก์ชันอัปเดตข้อมูลทั่วไป (Email, Phone, Username)
+export const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, email, phone } = req.body; // รับค่าที่ Frontend ส่งมา
+
+        // อัปเดตข้อมูลลง Database
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { username, email, phone }, // แก้ไขฟิลด์เหล่านี้
+            { new: true, runValidators: true } // คืนค่าใหม่กลับไป
+        ).select('-password'); // ไม่ส่งรหัสผ่านกลับไป
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'ไม่พบผู้ใช้ในระบบ' });
+        }
+
+        res.json({ 
+            status: 'success', 
+            message: 'อัปเดตข้อมูลโปรไฟล์สำเร็จ', 
+            user: updatedUser 
+        });
+
+    } catch (error) {
+        console.error('Error update user:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล' });
+    }
+};
