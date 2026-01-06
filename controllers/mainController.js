@@ -21,13 +21,28 @@ export const loginUser = async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) { return res.status(400).json({ message: 'กรุณากรอก Username และ Password' }); }
+        
         const user = await User.findOne({ username: username });
         if (!user) { return res.status(401).json({ message: 'Username หรือ Password ไม่ถูกต้อง' }); }
+        
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) { return res.status(401).json({ message: 'Username หรือ Password ไม่ถูกต้อง' }); }
+        
         const payload = { userId: user._id, username: user.username, isAdmin: user.isAdmin };
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); 
-        res.json({ status: 'success', message: 'ล็อกอินสำเร็จ', token: token, user: { username: user.username, isAdmin: user.isAdmin } });
+        
+        // ⭐️⭐️ แก้ตรงนี้ครับ: เพิ่ม _id: user._id เข้าไปใน object user
+        res.json({ 
+            status: 'success', 
+            message: 'ล็อกอินสำเร็จ', 
+            token: token, 
+            user: { 
+                _id: user._id,       // <--- เพิ่มบรรทัดนี้ครับ! สำคัญมาก
+                username: user.username, 
+                isAdmin: user.isAdmin 
+            } 
+        });
+
     } catch (error) {
         console.error('Error /api/login:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
