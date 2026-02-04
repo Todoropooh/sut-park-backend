@@ -1,4 +1,3 @@
-// models/ServiceItem.js
 import mongoose from "mongoose";
 
 const ServiceItemSchema = new mongoose.Schema(
@@ -28,6 +27,13 @@ const ServiceItemSchema = new mongoose.Schema(
     fundingAmount: {
       type: Number,
       default: 0,
+    },
+    // 🟢 เพิ่มส่วนนี้: กลุ่มเป้าหมาย (นักเรียน, อาจารย์, นักวิจัย, ทุกประเภท)
+    targetGroup: {
+      type: String,
+      required: true,
+      enum: ["นักเรียน/นักศึกษา", "อาจารย์", "นักวิจัย", "ทุกประเภท"],
+      default: "ทุกประเภท",
     },
     targetAudience: {
       type: [String],
