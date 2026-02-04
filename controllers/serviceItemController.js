@@ -6,8 +6,6 @@ import mongoose from 'mongoose';
 // --- 1. Get All (Public & Admin) ---
 export const getServiceItems = async (req, res) => {
   try {
-    // 🟢 [FINAL] ปิดโหมดชุบชีวิตแล้ว (ลบ updateMany ออก)
-    // ดึงข้อมูลทั้งหมด ที่สถานะ "ไม่ใช่ถูกลบ" (รวมถึงข้อมูลเก่าที่ไม่มี field นี้ด้วย)
     const services = await Service.find({ 
         isDeleted: { $ne: true } 
     }).sort({ createdAt: -1 });
@@ -44,7 +42,8 @@ export const getServiceItemById = async (req, res) => {
 // --- 3. Create ---
 export const createServiceItem = async (req, res) => {
   try {
-    const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
+    // 🟢 เพิ่ม targetGroup ในการรับค่าจาก req.body
+    const { title, category, description, startDate, endDate, rewardAmount, link, targetGroup } = req.body;
     const imageUrl = req.file ? req.file.path : null;
 
     if (!title) return res.status(400).json({ message: "กรุณากรอกชื่อบริการ/ทุน" });
@@ -54,6 +53,8 @@ export const createServiceItem = async (req, res) => {
         category: category || 'ทั่วไป',
         description,
         imageUrl,
+        // 🟢 บันทึกกลุ่มเป้าหมาย (Default เป็น ทุกประเภท)
+        targetGroup: targetGroup || 'ทุกประเภท',
         startDate: startDate || null,
         endDate: endDate || null,
         rewardAmount: rewardAmount || 0,
@@ -74,10 +75,13 @@ export const createServiceItem = async (req, res) => {
 export const updateServiceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, category, description, startDate, endDate, rewardAmount, link } = req.body;
+    // 🟢 เพิ่ม targetGroup ในการรับค่าจาก req.body
+    const { title, category, description, startDate, endDate, rewardAmount, link, targetGroup } = req.body;
 
     const updateData = { 
         title, category, description, 
+        // 🟢 เพิ่ม targetGroup ใน object ที่จะอัปเดต
+        targetGroup,
         startDate: startDate || null,
         endDate: endDate || null,
         rewardAmount: rewardAmount || 0,
