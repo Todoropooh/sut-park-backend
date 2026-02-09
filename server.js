@@ -1,5 +1,3 @@
-// src/server.js
-
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -18,7 +16,7 @@ import * as contactController from "./controllers/contactController.js";
 import * as newsController from "./controllers/newsController.js";
 import * as activityController from "./controllers/activityController.js";
 import * as serviceItemController from "./controllers/serviceItemController.js";
-import * as employeeController from "./controllers/employeeController.js"; // (ต้องมีไฟล์นี้)
+import * as employeeController from "./controllers/employeeController.js"; 
 
 // Routes
 import newsRoutes from "./routes/newsRoutes.js";
@@ -32,7 +30,8 @@ import serviceItemRoutes from "./routes/serviceItemRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js"; 
 import folderRoutes from "./routes/folderRoutes.js"; 
 import trashRoutes from "./routes/trashRoutes.js"; 
-import employeeRoutes from "./routes/employeeRoutes.js"; 
+import employeeRoutes from "./routes/employeeRoutes.js";
+import statisticRoutes from "./routes/statisticRoutes.js"; // 🟢 1. Import Route สถิติเข้ามา
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -54,11 +53,10 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --- 🟢 Public Routes (แบบเดิมที่ test.html เรียกใช้) ---
-// เรา map เส้นทาง /public/... ให้วิ่งไปหา Controller โดยตรงเหมือนเดิมครับ
 app.get("/public/news", newsController.getPublicNews);
 app.get("/public/activities", activityController.getPublicActivities);
-app.get("/public/services", serviceItemController.getServiceItems); // หรือ getPublicServiceItems ถ้ามี
-app.get("/public/employees", employeeController.getEmployees);      // หรือ getPublicEmployees ถ้ามี
+app.get("/public/services", serviceItemController.getServiceItems); 
+app.get("/public/employees", employeeController.getEmployees);      
 
 app.get("/api/test", mainController.getApiTest);
 app.post("/submit-form", contactController.createPublicContact);
@@ -79,6 +77,7 @@ app.use("/api/services", serviceItemRoutes);
 app.use("/api/folders", folderRoutes);
 app.use("/api/trash", trashRoutes);
 app.use("/api/employees", employeeRoutes);
+app.use("/api/statistics-settings", statisticRoutes); // 🟢 2. เปิดใช้งาน API สถิติ (เพื่อให้ปุ่ม Save ทำงานได้)
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
