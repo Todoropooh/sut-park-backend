@@ -1,13 +1,12 @@
-// backend/models/Statistic.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const StatisticSchema = new mongoose.Schema({
-  employment: { type: Number, default: 0 },      // การจ้างงาน
-  smes: { type: Number, default: 0 },            // ผู้ประกอบการ
-  enrollment: { type: Number, default: 0 },      // ผู้เข้าร่วม
-  products: { type: Number, default: 0 },        // ผลิตภัณฑ์
-  income: { type: Number, default: 0 },          // รายได้
-  awards: { type: Number, default: 0 }           // รางวัล
+  employment: { type: Number, default: 0 },
+  smes: { type: Number, default: 0 },
+  enrollment: { type: Number, default: 0 },
+  products: { type: Number, default: 0 },
+  income: { type: Number, default: 0 },
+  awards: { type: Number, default: 0 }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Statistic', StatisticSchema);
+export default mongoose.model('Statistic', StatisticSchema);

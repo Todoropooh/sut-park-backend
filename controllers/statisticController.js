@@ -1,8 +1,7 @@
-// backend/controllers/statisticController.js
-const Statistic = require('../models/Statistic');
+// อย่าลืมเติม .js ต่อท้ายชื่อไฟล์ตอน import ด้วยนะครับ
+import Statistic from '../models/Statistic.js'; 
 
-// 🟢 ฟังก์ชัน 1: ดึงข้อมูล (Get Stats)
-exports.getStats = async (req, res) => {
+export const getStats = async (req, res) => {
   try {
     let stats = await Statistic.findOne();
     if (!stats) {
@@ -14,8 +13,7 @@ exports.getStats = async (req, res) => {
   }
 };
 
-// 🟢 ฟังก์ชัน 2: บันทึกข้อมูล (Update Stats)
-exports.updateStats = async (req, res) => {
+export const updateStats = async (req, res) => {
   try {
     const updatedStats = await Statistic.findOneAndUpdate(
       {}, 
