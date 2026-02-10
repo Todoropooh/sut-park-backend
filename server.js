@@ -31,7 +31,8 @@ import fileRoutes from "./routes/fileRoutes.js";
 import folderRoutes from "./routes/folderRoutes.js"; 
 import trashRoutes from "./routes/trashRoutes.js"; 
 import employeeRoutes from "./routes/employeeRoutes.js";
-import statisticRoutes from "./routes/statisticRoutes.js"; // 🟢 1. Import Route สถิติเข้ามา
+import statisticRoutes from "./routes/statisticRoutes.js"; 
+import logRoutes from "./routes/logRoutes.js"; // 🟢 1. Import Route Logs เข้ามา
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -77,7 +78,8 @@ app.use("/api/services", serviceItemRoutes);
 app.use("/api/folders", folderRoutes);
 app.use("/api/trash", trashRoutes);
 app.use("/api/employees", employeeRoutes);
-app.use("/api/statistics-settings", statisticRoutes); // 🟢 2. เปิดใช้งาน API สถิติ (เพื่อให้ปุ่ม Save ทำงานได้)
+app.use("/api/statistics-settings", statisticRoutes); 
+app.use("/api/logs", logRoutes); // 🟢 2. เปิดใช้งาน API Logs (เพื่อให้หน้าบ้านดึงประวัติได้)
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
