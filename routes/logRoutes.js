@@ -1,9 +1,9 @@
 import express from "express";
-import Log from "../models/Log.js";
+import Log from "../models/Log.js"; // Import Model Log
 
 const router = express.Router();
 
-// 🟢 GET: ดึง Log ทั้งหมด
+// 1. GET API: ดึงข้อมูล Log
 router.get("/", async (req, res) => {
   try {
     const logs = await Log.find().sort({ timestamp: -1 }).limit(100);
@@ -13,8 +13,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 🟡 ฟังก์ชันสร้าง Log (ต้อง export แบบนี้เพื่อให้ไฟล์อื่นเรียกใช้ได้)
-// ❌ ห้าม import createLog ในไฟล์นี้เด็ดขาด เพราะเรากำลังสร้างมันอยู่ที่นี่
+// 2. Export Function: ฟังก์ชันบันทึก Log (เพื่อให้ไฟล์อื่นเรียกใช้)
+// ⚠️ ห้าม import createLog ในไฟล์นี้ เพราะเรากำลังประกาศมันอยู่ตรงนี้
 export const createLog = async (action, detail, by, role) => {
   try {
     const newLog = new Log({ 
