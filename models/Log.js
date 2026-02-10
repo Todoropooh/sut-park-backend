@@ -1,11 +1,14 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
-const LogSchema = new mongoose.Schema({
-  action: { type: String, required: true },       // ชื่อการกระทำ เช่น "Update KPI"
-  detail: { type: String },                       // รายละเอียด เช่น "Changed income to 5M"
-  by: { type: String, required: true },           // ชื่อคนทำ (username)
-  role: { type: String, default: 'Admin' },       // Role คนทำ
-  timestamp: { type: Date, default: Date.now }    // เวลาที่ทำ
+const logSchema = new mongoose.Schema({
+  action: { type: String, required: true },      
+  detail: { type: String },                       
+  by: { type: String, required: true },           
+  role: { type: String, default: 'User' },       
+  timestamp: { type: Date, default: Date.now }    
 });
 
-module.exports = mongoose.model('Log', LogSchema);
+const Log = mongoose.model("Log", logSchema);
+
+// 👇 บรรทัดนี้สำคัญมาก! ต้องมีเพื่อให้ import Log from "..." ทำงานได้
+export default Log;
