@@ -19,6 +19,7 @@ import * as serviceItemController from "./controllers/serviceItemController.js";
 import * as employeeController from "./controllers/employeeController.js"; 
 
 // Routes
+import authRoutes from "./routes/authRoutes.js"; // 🟢 1. Import Auth Routes (สำคัญ!)
 import newsRoutes from "./routes/newsRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -32,7 +33,7 @@ import folderRoutes from "./routes/folderRoutes.js";
 import trashRoutes from "./routes/trashRoutes.js"; 
 import employeeRoutes from "./routes/employeeRoutes.js";
 import statisticRoutes from "./routes/statisticRoutes.js"; 
-import logRoutes from "./routes/logRoutes.js"; // 🟢 1. Import Route Logs เข้ามา
+import logRoutes from "./routes/logRoutes.js"; 
 
 // Config
 const MONGO_URI = process.env.MONGO_URI;
@@ -61,12 +62,13 @@ app.get("/public/employees", employeeController.getEmployees);
 
 app.get("/api/test", mainController.getApiTest);
 app.post("/submit-form", contactController.createPublicContact);
-app.post("/api/login", mainController.loginUser);
+// app.post("/api/login", mainController.loginUser); // อันเก่า (ถ้าไม่ได้ใช้แล้ว คอมเมนต์ทิ้งได้เลย)
 
 // File serving
 app.use("/public/files", fileRoutes);
 
 // --- API Routes (สำหรับ Admin Dashboard) ---
+app.use("/api/auth", authRoutes); // 🟢 2. เปิดใช้งานเส้นทาง Login/Auth (สำคัญมาก!)
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/activities", activityRoutes);
@@ -79,7 +81,7 @@ app.use("/api/folders", folderRoutes);
 app.use("/api/trash", trashRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/statistics-settings", statisticRoutes); 
-app.use("/api/logs", logRoutes); // 🟢 2. เปิดใช้งาน API Logs (เพื่อให้หน้าบ้านดึงประวัติได้)
+app.use("/api/logs", logRoutes); 
 
 // --- DB + Server Start ---
 console.log("Connecting to MongoDB...");
