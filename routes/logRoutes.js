@@ -30,4 +30,18 @@ export const createLog = async (action, detail, by, role) => {
   }
 };
 
+// เพิ่มต่อท้ายไฟล์ ก่อน export default
+router.post("/", async (req, res) => {
+  try {
+    const { action, detail, by, role } = req.body;
+    
+    // เรียกใช้ฟังก์ชัน createLog ที่เราเขียนไว้ในไฟล์เดียวกัน
+    await createLog(action, detail, by, role);
+    
+    res.json({ message: "Log saved successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to save log" });
+  }
+});
+
 export default router;
