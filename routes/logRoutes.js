@@ -1,5 +1,5 @@
 import express from "express";
-import Log from "../models/Log.js"; // Import Model Log
+import Log from "../models/Log.js"; 
 
 const router = express.Router();
 
@@ -13,8 +13,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 2. Export Function: ฟังก์ชันบันทึก Log (เพื่อให้ไฟล์อื่นเรียกใช้)
-// ⚠️ ห้าม import createLog ในไฟล์นี้ เพราะเรากำลังประกาศมันอยู่ตรงนี้
+// 2. Export Function: สร้าง Log
+// ✅ จุดสำคัญ: ห้ามมีบรรทัด import { createLog } from ... เด็ดขาด!
 export const createLog = async (action, detail, by, role) => {
   try {
     const newLog = new Log({ 
