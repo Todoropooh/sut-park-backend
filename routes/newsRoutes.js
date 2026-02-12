@@ -10,23 +10,22 @@ import {
     deleteNews 
 } from '../controllers/newsController.js';
 
-// 🟢 Import Middleware ตรวจสอบสิทธิ์ (Auth)
-// (ชื่อไฟล์อาจจะต่างกัน เช็คดูนะครับว่าของแจ้มชื่อ authMiddleware.js หรือเปล่า)
+// Import Middleware
 import { authenticateToken } from '../middleware/authMiddleware.js'; 
-
-// 🟢 Import Middleware สำหรับอัปโหลดรูป (ถ้ามี)
 import { upload } from '../middleware/uploadMiddleware.js'; 
 
 const router = express.Router();
 
 // --- Public Routes (ใครก็ได้เข้าดูได้) ---
+
+// 🟢 แก้ไขแล้ว: เอา authenticateToken ออก เพื่อให้ดึงข่าวทั้งหมดได้โดยไม่ต้อง Login
+router.get('/', getAllNews); 
+
 router.get('/public', getPublicNews);
 router.get('/:id', getNewsById);
 
 // --- Protected Routes (ต้อง Login เท่านั้น) ---
-// ต้องใส่ authenticateToken คั่นไว้หน้าฟังก์ชันเสมอ
-
-router.get('/', authenticateToken, getAllNews); // Admin ดูทั้งหมด (รวมที่ซ่อน)
+// ส่วนการสร้าง/แก้ไข/ลบ ยังคงต้องใช้ Token เหมือนเดิม เพื่อความปลอดภัย
 
 // สร้างข่าว (มีอัปโหลดรูป)
 router.post('/', authenticateToken, upload.single('image'), createNews);
@@ -34,7 +33,7 @@ router.post('/', authenticateToken, upload.single('image'), createNews);
 // แก้ไขข่าว (มีอัปโหลดรูป)
 router.put('/:id', authenticateToken, upload.single('image'), updateNews);
 
-// ⭐️ ลบข่าว (จุดสำคัญ! ต้องมี authenticateToken)
+// ลบข่าว
 router.delete('/:id', authenticateToken, deleteNews);
 
 export default router;
