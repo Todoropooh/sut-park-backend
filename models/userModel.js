@@ -1,20 +1,78 @@
-// models/userModel.js (Corrected ESM)
-
-import mongoose from 'mongoose'; // 1. ⭐️ (แก้ไข) เปลี่ยน 'require'
-import bcrypt from 'bcrypt';     // 2. ⭐️ (แก้ไข) เปลี่ยน 'require'
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    isAdmin: { type: Boolean, default: false } 
-});
 
-// (ย้าย Logic การ Hash รหัสผ่าน มาไว้ใน Model)
+  // ข้อมูลล็อกอิน
+  username: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    trim: true 
+  },
+
+  password: { 
+    type: String, 
+    required: true 
+  },
+
+  // สิทธิ์ผู้ใช้
+  isAdmin: { 
+    type: Boolean, 
+    default: false 
+  },
+
+  // 🟢 ข้อมูลติดต่อ
+  email: { 
+    type: String, 
+    default: "" 
+  },
+
+  phone: { 
+    type: String, 
+    default: "" 
+  },
+
+  // 🟢 รูปโปรไฟล์
+  imageUrl: { 
+    type: String, 
+    default: "" 
+  },
+
+  // ⭐ Soft Delete
+  isDeleted: { 
+    type: Boolean, 
+    default: false, 
+    index: true 
+  },
+
+  deletedAt: { 
+    type: Date, 
+    default: null 
+  },
+
+  deletedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    default: null 
+  }
+
+}, { timestamps: true });
+
+
+// 🔐 Hash password อัตโนมัติ
 userSchema.pre('save', async function(next) {
-    if (this.isModified('password')) { 
-        this.password = await bcrypt.hash(this.password, 10); 
-    }
-    next();
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
 });
 
-export default mongoose.model('User', userSchema); // (บรรทัดนี้ถูกต้องแล้ว)
+
+// 🔍 ใช้ตรวจรหัสผ่านตอน login
+userSchema.methods.comparePassword = function(password) {
+  return bcrypt.compare(password, this.password);
+};
+
+
+export default mongoose.model('User', userSchema);
